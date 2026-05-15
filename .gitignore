@@ -1,0 +1,30 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets / credentials — NEVER commit
+*.pages
+*password*
+*passwd*
+*credentials*
+*.env
+.env.*
+*-secret.json
+serviceAccount*.json
+firebase-adminsdk*.json
+
+# Node (functions/ in future)
+node_modules/
+npm-debug.log*
+
+# Local artifacts
+*.log
+.firebaserc.local
+.firebase/

@@ -175,9 +175,12 @@
   function init() {
     var id = MB.util.getQueryParam('id');
     if (!id) { renderNotFound(); return; }
-    var listing = MB.listings.getById(id);
-    if (!listing) { renderNotFound(); return; }
-    render(listing);
+    // Wait for the first Firestore snapshot before looking up by id.
+    MB.listings.ready.then(function () {
+      var listing = MB.listings.getById(id);
+      if (!listing) { renderNotFound(); return; }
+      render(listing);
+    });
   }
 
   if (document.readyState === 'loading') {

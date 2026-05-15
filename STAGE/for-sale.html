@@ -104,6 +104,7 @@
   </div>
 </footer>
 
+<script type="module" src="assets/js/firebase-init.js"></script>
 <script src="assets/js/site.js"></script>
 <script src="assets/js/listings.js"></script>
 <script>
@@ -111,6 +112,9 @@
     var grid = document.getElementById('listings-grid');
     var chips = document.querySelectorAll('.chip[data-filter]');
     if (!grid) return;
+
+    var currentFilter = 'active';
+    var allItems = [];
 
     function emptyMessage(filter) {
       var label = filter === 'active' ? 'active listings'
@@ -124,10 +128,15 @@
            + '</div>';
     }
 
-    function render(filter) {
-      var items = MB.listings.getAll(filter);
+    function render() {
+      var items;
+      if (!currentFilter || currentFilter === 'all') {
+        items = allItems.slice();
+      } else {
+        items = allItems.filter(function (l) { return l.status === currentFilter; });
+      }
       if (!items.length) {
-        grid.innerHTML = emptyMessage(filter);
+        grid.innerHTML = emptyMessage(currentFilter);
         return;
       }
       grid.innerHTML = items.map(MB.renderListingCard).join('');
@@ -141,12 +150,17 @@
         });
         chip.classList.add('is-active');
         chip.setAttribute('aria-selected', 'true');
-        render(chip.getAttribute('data-filter'));
+        currentFilter = chip.getAttribute('data-filter');
+        render();
       });
     });
 
-    // Default: Active
-    render('active');
+    // Live subscription — re-renders on every Firestore snapshot, so a
+    // new listing added in the CMS appears here without a refresh.
+    MB.listings.subscribeAll(function (items) {
+      allItems = items;
+      render();
+    });
   })();
 </script>
 

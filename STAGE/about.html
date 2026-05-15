@@ -44,7 +44,7 @@
 
   <section class="hero hero--small">
     <div class="hero__inner">
-      <h1>Get to Know Me</h1>
+      <h1 data-content="pageHeading">Get to Know Me</h1>
       <p class="hero__tagline">A native of Marin. A trusted advocate.</p>
     </div>
   </section>
@@ -53,9 +53,14 @@
     <div class="wrap">
       <div class="about-grid">
         <div class="headshot">
-          <img src="assets/images/placeholder-headshot.svg" alt="Portrait placeholder for Marie Borders. A real headshot will replace this image.">
+          <img data-content="headshot"
+               src="assets/images/marie-headshot.jpg"
+               alt="Marie Borders"
+               loading="lazy"
+               style="max-width:280px;margin:0 auto;"
+               onerror="this.onerror=null;this.src='assets/images/placeholder-headshot.svg';">
         </div>
-        <div class="bio">
+        <div class="bio" data-content="bioParagraphs">
           <p>As a native of Marin County, having lived, worked and volunteered within the Bay Area all of my life, I understand the area, its varied communities and complex markets intimately. I have been a licensed real estate agent since 1999. That combined with my over 25 years in business, banking and real estate finance makes me uniquely qualified to represent you with confidence in one of the biggest transactions of your life.</p>
 
           <p>The attributes and qualities that I bring yield exponential results for my clients. I have a strong, decades-long background in sales and marketing with deep roots and countless connections in this community. I continually conduct extensive research of the markets to maintain my expertise and inform my clients of trends.</p>
@@ -141,7 +146,14 @@
   </div>
 </footer>
 
+<script type="module" src="assets/js/firebase-init.js"></script>
 <script src="assets/js/site.js"></script>
+<script src="assets/js/site-content.js"></script>
+<script>
+  (function () {
+    MB.content && MB.content.applyAbout && MB.content.applyAbout();
+  })();
+</script>
 
 </body>
 </html>

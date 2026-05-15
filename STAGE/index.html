@@ -44,8 +44,8 @@
 
   <section class="hero">
     <div class="hero__inner">
-      <h1>Marie Borders</h1>
-      <p class="hero__tagline">Marin County Real Estate</p>
+      <h1 data-content="heroHeadline">Marie Borders</h1>
+      <p class="hero__tagline" data-content="heroSubhead">Marin County Real Estate</p>
       <div class="hero__divider"></div>
       <p class="hero__sub">Boutique service. Decades of expertise.</p>
       <div class="hero__ctas">
@@ -57,7 +57,7 @@
 
   <section class="band-intro">
     <div class="wrap wrap--narrow">
-      <p>As a native of Marin County and a licensed real estate agent since 1999, Marie brings deep local roots and decades of experience to one of the most personal transactions of your life.</p>
+      <p data-content="introBody">As a native of Marin County and a licensed real estate agent since 1999, Marie brings deep local roots and decades of experience to one of the most personal transactions of your life.</p>
       <a class="btn btn--ink" href="about.html">Read Marie’s full bio</a>
     </div>
   </section>
@@ -66,7 +66,7 @@
     <div class="wrap">
       <div class="section-head">
         <p class="section-head__eyebrow">Marin County</p>
-        <h2>Currently Featured</h2>
+        <h2 data-content="introHeading">Currently Featured</h2>
         <p class="section-head__lede">A small, curated selection of homes we’re proud to represent.</p>
       </div>
       <div id="featured-grid" class="listings-grid" aria-live="polite"></div>
@@ -116,18 +116,30 @@
   </div>
 </footer>
 
+<script type="module" src="assets/js/firebase-init.js"></script>
 <script src="assets/js/site.js"></script>
 <script src="assets/js/listings.js"></script>
+<script src="assets/js/site-content.js"></script>
 <script>
   (function () {
     var grid = document.getElementById('featured-grid');
     if (!grid) return;
-    var featured = MB.listings.getFeatured(3);
-    if (!featured.length) {
+
+    function renderEmpty() {
       grid.outerHTML = '<div class="empty-state"><p>New listings coming soon.</p><p style="font-family:var(--font-sans);font-size:1rem;">Get in touch to discuss your goals or join Marie’s short list of clients receiving early notice on new properties.</p><a class="btn" href="contact.html">Get in Touch</a></div>';
-      return;
     }
-    grid.innerHTML = featured.map(MB.renderListingCard).join('');
+
+    MB.listings.ready.then(function () {
+      var featured = MB.listings.getFeatured(3);
+      if (!featured.length) { renderEmpty(); return; }
+      grid.innerHTML = featured.map(MB.renderListingCard).join('');
+    });
+  })();
+</script>
+<script>
+  // Site content overlay — see assets/js/site-content.js
+  (function () {
+    MB.content && MB.content.applyHome && MB.content.applyHome();
   })();
 </script>
 

@@ -1,0 +1,26 @@
+// Marie Borders — Firestore security rules
+//
+// Default-deny per feedback_firestore-rule-checklist. Public read on listings
+// + siteContent so the marketing site renders without auth. Write requires
+// any authenticated user — currently only Marie has an Auth account, so
+// effectively only she can edit. If multiple users get added later, upgrade
+// to an `admins/{uid}` allow-list pattern.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthed() { return request.auth != null; }
+
+    match /listings/{listingId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+    match /siteContent/{docId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

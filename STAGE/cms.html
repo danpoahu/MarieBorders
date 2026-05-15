@@ -1,0 +1,1718 @@
+<!DOCTYPE html>
+<!--
+  Marie Borders — Content Management System (Phase 3)
+
+  Auth-gated single-page admin for Marie. Edits Firestore `listings` +
+  `siteContent/{home,about,contact}` and uploads photos to Cloud Storage.
+
+  Auth: Email/Password. Marie's user is created manually by Daniel in the
+  Firebase Console. The Firestore rules + Storage rules require an
+  authenticated user for any write; reads on listings + siteContent are
+  public so the marketing site can render without auth.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Marie Borders CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* ---- CMS-specific overrides ---- */
+  body { background: var(--paper-deep); font-size: 15px; }
+
+  .cms-shell { display: none; }
+  .cms-shell.is-ready { display: block; }
+
+  .cms-bar {
+    background: var(--ink);
+    color: #fff;
+    padding: var(--s4) var(--s5);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+    flex-wrap: wrap;
+  }
+  .cms-bar__brand {
+    font-family: var(--font-serif);
+    font-size: 1.4rem;
+    color: #fff;
+  }
+  .cms-bar__user { font-size: 0.85rem; color: rgba(255,255,255,0.72); }
+  .cms-bar__user button {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    padding: var(--s2) var(--s4);
+    margin-left: var(--s3);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  .cms-bar__user button:hover { background: rgba(255,255,255,0.12); }
+
+  .cms-tabs {
+    background: #fff;
+    border-bottom: 1px solid var(--hush);
+    display: flex;
+    overflow-x: auto;
+    padding: 0 var(--s5);
+  }
+  .cms-tab {
+    background: transparent;
+    border: 0;
+    padding: var(--s4) var(--s5);
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .cms-tab:hover { color: var(--ink); }
+  .cms-tab.is-active { color: var(--accent-deep); border-bottom-color: var(--accent); }
+
+  .cms-panel { padding: var(--s6) var(--s5); max-width: 1100px; margin: 0 auto; display: none; }
+  .cms-panel.is-active { display: block; }
+
+  .cms-section { background: #fff; border: 1px solid var(--hush); border-radius: var(--radius); padding: var(--s6); margin-bottom: var(--s5); }
+  .cms-section h2 { font-size: 1.4rem; margin-bottom: var(--s4); }
+  .cms-section h3 { font-size: 1.1rem; margin: var(--s5) 0 var(--s3); color: var(--ink-soft); font-weight: 500; }
+
+  .cms-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+    flex-wrap: wrap;
+    margin-bottom: var(--s5);
+  }
+
+  /* ---- Login card ---- */
+  .login-wrap {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s5);
+  }
+  .login-card {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s7);
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 4px 16px rgba(26,31,36,0.05);
+  }
+  .login-card h1 { font-size: 1.8rem; margin-bottom: var(--s4); text-align: center; }
+  .login-card .form { gap: var(--s4); }
+  .login-error { color: #7a3134; font-size: 0.9rem; margin-top: var(--s3); display: none; }
+  .login-error.is-visible { display: block; }
+  .login-reset {
+    text-align: center;
+    margin-top: var(--s4);
+    font-size: 0.88rem;
+  }
+  .login-reset button {
+    background: transparent;
+    border: 0;
+    color: var(--accent);
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: inherit;
+  }
+
+  /* ---- Listings table ---- */
+  .listings-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s4);
+    margin-bottom: var(--s5);
+    flex-wrap: wrap;
+  }
+  .listings-toolbar .filters { margin-bottom: 0; }
+
+  .listing-row {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    gap: var(--s4);
+    padding: var(--s4);
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    background: #fff;
+    margin-bottom: var(--s3);
+    align-items: center;
+  }
+  .listing-row__thumb {
+    width: 80px; height: 60px;
+    background: var(--paper-deep);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .listing-row__thumb img, .listing-row__thumb svg { width: 100%; height: 100%; object-fit: cover; }
+  .listing-row__main { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+  .listing-row__price { font-family: var(--font-serif); font-size: 1.25rem; color: var(--ink); }
+  .listing-row__addr  { font-size: 0.9rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .listing-row__stats { font-size: 0.82rem; color: var(--ink-muted); }
+  .listing-row__actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+  /* ---- Buttons ---- */
+  .btn--sm {
+    padding: var(--s2) var(--s4);
+    font-size: 0.78rem;
+  }
+  .btn--secondary {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--hush);
+  }
+  .btn--secondary:hover, .btn--secondary:focus { background: var(--paper-deep); color: var(--ink); border-color: var(--ink-muted); }
+  .btn--danger {
+    background: #7a3134;
+    border-color: #7a3134;
+    color: #fff;
+  }
+  .btn--danger:hover, .btn--danger:focus { background: #5e2528; border-color: #5e2528; }
+
+  /* ---- Drawer / modal for listing edit ---- */
+  .drawer-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15,20,28,0.55);
+    z-index: 200;
+    display: none;
+  }
+  .drawer-backdrop.is-open { display: block; }
+  .drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 100%;
+    max-width: 720px;
+    background: #fff;
+    z-index: 210;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .drawer.is-open { transform: translateX(0); }
+  .drawer__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--s4) var(--s5);
+    border-bottom: 1px solid var(--hush);
+  }
+  .drawer__header h2 { font-size: 1.3rem; margin: 0; }
+  .drawer__close {
+    background: transparent;
+    border: 0;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--ink-muted);
+    cursor: pointer;
+    padding: var(--s2);
+  }
+  .drawer__body { flex: 1; overflow-y: auto; padding: var(--s5); }
+  .drawer__footer {
+    border-top: 1px solid var(--hush);
+    padding: var(--s4) var(--s5);
+    display: flex;
+    gap: var(--s3);
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .drawer__footer-left, .drawer__footer-right { display: flex; gap: var(--s3); }
+
+  /* ---- Address group ---- */
+  .address-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--s3);
+  }
+  @media (min-width: 600px) {
+    .address-grid { grid-template-columns: 2fr 1fr 0.5fr 0.7fr; }
+  }
+
+  .numbers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--s3);
+  }
+
+  /* ---- Chips input ---- */
+  .chip-input {
+    border: 1px solid var(--hush);
+    background: #fff;
+    border-radius: var(--radius);
+    padding: var(--s2);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+    min-height: 48px;
+  }
+  .chip-input input {
+    flex: 1;
+    border: 0;
+    outline: none;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    padding: var(--s2);
+    min-width: 140px;
+    background: transparent;
+  }
+  .chip-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    background: var(--paper-deep);
+    border: 1px solid var(--hush);
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+  .chip-tag button {
+    background: transparent;
+    border: 0;
+    color: var(--ink-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+  }
+  .chip-tag button:hover { color: var(--ink); }
+
+  /* ---- Open houses repeater ---- */
+  .oh-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: var(--s3);
+    align-items: end;
+    margin-bottom: var(--s3);
+  }
+  .oh-add {
+    background: transparent;
+    border: 0;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 0.88rem;
+    padding: var(--s2) 0;
+  }
+  .oh-add:hover { color: var(--accent-deep); }
+
+  /* ---- Photo dropzone + strip ---- */
+  .dropzone {
+    border: 2px dashed var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s6);
+    text-align: center;
+    color: var(--ink-muted);
+    background: var(--paper-deep);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .dropzone:hover, .dropzone.is-drag {
+    border-color: var(--accent);
+    background: #fff;
+    color: var(--ink);
+  }
+  .dropzone input[type=file] { display: none; }
+  .dropzone__note {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    margin-top: var(--s2);
+  }
+  .upload-progress {
+    margin-top: var(--s3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);
+  }
+  .upload-progress__item {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    font-size: 0.85rem;
+  }
+  .upload-progress__bar {
+    flex: 1;
+    height: 6px;
+    background: var(--hush);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .upload-progress__fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.15s linear;
+  }
+
+  .photo-strip {
+    display: flex;
+    gap: var(--s3);
+    overflow-x: auto;
+    padding: var(--s3) 0;
+    margin-top: var(--s3);
+  }
+  .photo-card {
+    position: relative;
+    width: 140px;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--paper-deep);
+    cursor: grab;
+  }
+  .photo-card.is-primary { border-color: var(--accent); }
+  .photo-card img { width: 100%; height: 100px; object-fit: cover; display: block; }
+  .photo-card__actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--s2);
+    background: #fff;
+    font-size: 0.78rem;
+  }
+  .photo-card__star, .photo-card__remove {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    color: var(--ink-muted);
+    padding: 0;
+    font-size: 0.78rem;
+  }
+  .photo-card__star.is-on { color: var(--accent-deep); }
+  .photo-card__star:hover, .photo-card__remove:hover { color: var(--ink); }
+  .photo-card.is-dragging { opacity: 0.5; }
+
+  /* ---- Toast ---- */
+  .toast {
+    position: fixed;
+    bottom: var(--s5);
+    right: var(--s5);
+    background: var(--ink);
+    color: #fff;
+    padding: var(--s3) var(--s5);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    z-index: 300;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+  }
+  .toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .toast.is-error { background: #7a3134; }
+
+  /* ---- Headshot row in About tab ---- */
+  .headshot-row {
+    display: flex;
+    align-items: center;
+    gap: var(--s5);
+    flex-wrap: wrap;
+  }
+  .headshot-row__thumb {
+    width: 120px;
+    height: 180px;
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .headshot-row__thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* ---- Status pill (matches public) ---- */
+  .row-pill {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.4rem;
+    border-radius: 2px;
+    background: var(--ink);
+    color: #fff;
+    display: inline-block;
+    margin-right: var(--s2);
+  }
+  .row-pill--active  { background: #2d6a4f; }
+  .row-pill--pending { background: #b06b1c; }
+  .row-pill--sold    { background: #7a3134; }
+
+  .helper-text {
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    margin-top: var(--s2);
+  }
+  .helper-text--inline {
+    display: inline;
+    margin-left: var(--s2);
+  }
+  .empty-list {
+    text-align: center;
+    color: var(--ink-muted);
+    padding: var(--s7);
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN GATE ============ -->
+<div id="login-wrap" class="login-wrap" style="display:none;">
+  <div class="login-card">
+    <h1>Marie Borders CMS</h1>
+    <form id="login-form" class="form" novalidate>
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <div id="login-error" class="login-error" role="alert"></div>
+      <button type="submit" class="btn">Sign In</button>
+      <div class="login-reset">
+        <button type="button" id="login-reset-btn">Forgot password?</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ CMS SHELL ============ -->
+<div id="cms-shell" class="cms-shell">
+  <div class="cms-bar">
+    <div class="cms-bar__brand">Marie Borders CMS</div>
+    <div class="cms-bar__user">
+      <span>Signed in as <strong id="cms-user-email">—</strong></span>
+      <button id="cms-signout-btn" type="button">Sign Out</button>
+    </div>
+  </div>
+
+  <nav class="cms-tabs" aria-label="CMS sections">
+    <button class="cms-tab is-active" type="button" data-tab="listings">Listings</button>
+    <button class="cms-tab" type="button" data-tab="about">About Page</button>
+    <button class="cms-tab" type="button" data-tab="home">Home Page</button>
+    <button class="cms-tab" type="button" data-tab="contact">Contact Info</button>
+  </nav>
+
+  <!-- ============ LISTINGS PANEL ============ -->
+  <section class="cms-panel is-active" data-panel="listings">
+    <div class="cms-section">
+      <div class="listings-toolbar">
+        <button id="add-listing-btn" type="button" class="btn">Add New Listing</button>
+        <div class="filters" role="tablist" aria-label="Filter listings by status">
+          <button class="chip is-active" type="button" data-filter="all">All</button>
+          <button class="chip" type="button" data-filter="active">Active</button>
+          <button class="chip" type="button" data-filter="pending">Pending</button>
+          <button class="chip" type="button" data-filter="sold">Sold</button>
+        </div>
+      </div>
+      <div id="listings-list" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT PANEL ============ -->
+  <section class="cms-panel" data-panel="about">
+    <div class="cms-section">
+      <h2>About Page</h2>
+      <form id="about-form" class="form" novalidate>
+        <div class="field">
+          <label for="about-pageHeading">Page heading</label>
+          <input type="text" id="about-pageHeading" data-field="pageHeading">
+        </div>
+
+        <h3>Headshot</h3>
+        <div class="headshot-row">
+          <div class="headshot-row__thumb">
+            <img id="about-headshot-preview" src="assets/images/marie-headshot.jpg" alt="Current headshot">
+          </div>
+          <div>
+            <input type="file" id="about-headshot-input" accept="image/jpeg,image/png,image/webp" style="display:none;">
+            <button type="button" class="btn btn--secondary btn--sm" id="about-headshot-replace">Replace Photo</button>
+            <p class="helper-text">JPEG, PNG, or WebP. Max 2000px wide — larger images are resized client-side before upload.</p>
+            <div id="about-headshot-progress" class="upload-progress"></div>
+          </div>
+        </div>
+
+        <h3>Bio paragraphs</h3>
+        <div class="field">
+          <label for="about-bio1">Paragraph 1</label>
+          <textarea id="about-bio1" rows="4" data-bio-index="0"></textarea>
+        </div>
+        <div class="field">
+          <label for="about-bio2">Paragraph 2</label>
+          <textarea id="about-bio2" rows="4" data-bio-index="1"></textarea>
+        </div>
+        <div class="field">
+          <label for="about-bio3">Paragraph 3</label>
+          <textarea id="about-bio3" rows="4" data-bio-index="2"></textarea>
+        </div>
+
+        <h3>Credentials</h3>
+        <p class="helper-text" style="margin-top:0;">Captured for record. The public About page currently shows four fixed credential tiles — these chips are saved with the doc for future use.</p>
+        <div class="chip-input" data-chip-input="credentials" id="about-credentials-chips">
+          <input type="text" placeholder="Type a credential and press Enter">
+        </div>
+
+        <div class="cms-row" style="margin-top:var(--s5);">
+          <button type="submit" class="btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ HOME PANEL ============ -->
+  <section class="cms-panel" data-panel="home">
+    <div class="cms-section">
+      <h2>Home Page</h2>
+      <form id="home-form" class="form" novalidate>
+        <div class="field">
+          <label for="home-heroHeadline">Hero headline</label>
+          <input type="text" id="home-heroHeadline" data-field="heroHeadline">
+        </div>
+        <div class="field">
+          <label for="home-heroSubhead">Hero subhead</label>
+          <input type="text" id="home-heroSubhead" data-field="heroSubhead">
+        </div>
+        <div class="field">
+          <label for="home-introHeading">Intro section heading</label>
+          <input type="text" id="home-introHeading" data-field="introHeading">
+        </div>
+        <div class="field">
+          <label for="home-introBody">Intro body</label>
+          <textarea id="home-introBody" rows="4" data-field="introBody"></textarea>
+        </div>
+
+        <h3>Featured listings</h3>
+        <p class="helper-text" style="margin-top:0;">Featured listings are not configured here. Open any listing in the Listings tab and check the <strong>Featured</strong> box — those listings will appear on the home page.</p>
+
+        <div class="cms-row" style="margin-top:var(--s5);">
+          <button type="submit" class="btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT INFO PANEL ============ -->
+  <section class="cms-panel" data-panel="contact">
+    <div class="cms-section">
+      <h2>Contact Info</h2>
+      <p class="helper-text" style="margin-top:0;margin-bottom:var(--s5);">
+        Note: The contact form delivery email (<code>mariebordershometeam@gmail.com</code>) is set in the website code and not editable here. Contact Daniel to change.
+      </p>
+      <form id="contact-form-cms" class="form" novalidate>
+        <div class="field">
+          <label for="contact-displayEmail">Display email</label>
+          <input type="email" id="contact-displayEmail" data-field="displayEmail">
+        </div>
+        <div class="field">
+          <label for="contact-phone">Phone</label>
+          <input type="text" id="contact-phone" data-field="phone">
+        </div>
+        <div class="field">
+          <label for="contact-license">License</label>
+          <input type="text" id="contact-license" data-field="license">
+        </div>
+        <div class="field">
+          <label for="contact-brokerage">Brokerage name</label>
+          <input type="text" id="contact-brokerage" data-field="brokerage">
+        </div>
+        <div class="field">
+          <label for="contact-brokerageUrl">Brokerage URL</label>
+          <input type="url" id="contact-brokerageUrl" data-field="brokerageUrl">
+        </div>
+        <div class="cms-row" style="margin-top:var(--s5);">
+          <button type="submit" class="btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </section>
+</div>
+
+<!-- ============ LISTING DRAWER ============ -->
+<div id="drawer-backdrop" class="drawer-backdrop"></div>
+<aside id="listing-drawer" class="drawer" aria-hidden="true" aria-label="Listing editor">
+  <div class="drawer__header">
+    <h2 id="drawer-title">New Listing</h2>
+    <button class="drawer__close" id="drawer-close" type="button" aria-label="Close drawer">&times;</button>
+  </div>
+  <div class="drawer__body">
+    <form id="listing-form" class="form" novalidate>
+      <input type="hidden" id="listing-id">
+
+      <div class="field--row">
+        <div class="field">
+          <label for="listing-status">Status</label>
+          <select id="listing-status">
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="sold">Sold</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <label style="display:flex;align-items:center;gap:var(--s2);font-size:0.95rem;letter-spacing:0;text-transform:none;color:var(--ink);padding-top:var(--s2);">
+            <input type="checkbox" id="listing-featured" style="width:auto;">
+            Featured (appears on home page)
+          </label>
+        </div>
+      </div>
+
+      <div class="field--row">
+        <div class="field">
+          <label for="listing-listPrice">List price ($)</label>
+          <input type="text" inputmode="numeric" id="listing-listPrice">
+        </div>
+        <div class="field" id="listing-soldPrice-field">
+          <label for="listing-soldPrice">Sold price ($)</label>
+          <input type="text" inputmode="numeric" id="listing-soldPrice">
+        </div>
+      </div>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Address</h3>
+      <div class="address-grid">
+        <div class="field">
+          <label for="listing-street">Street</label>
+          <input type="text" id="listing-street">
+        </div>
+        <div class="field">
+          <label for="listing-city">City</label>
+          <input type="text" id="listing-city">
+        </div>
+        <div class="field">
+          <label for="listing-state">State</label>
+          <input type="text" id="listing-state" value="CA" maxlength="2">
+        </div>
+        <div class="field">
+          <label for="listing-zip">Zip</label>
+          <input type="text" id="listing-zip" maxlength="10">
+        </div>
+      </div>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Details</h3>
+      <div class="numbers-grid">
+        <div class="field">
+          <label for="listing-beds">Beds</label>
+          <input type="number" id="listing-beds" min="0">
+        </div>
+        <div class="field">
+          <label for="listing-baths">Baths</label>
+          <input type="number" id="listing-baths" min="0" step="0.5">
+        </div>
+        <div class="field">
+          <label for="listing-halfBaths">Half-baths</label>
+          <input type="number" id="listing-halfBaths" min="0">
+        </div>
+        <div class="field">
+          <label for="listing-sqft">Sqft</label>
+          <input type="number" id="listing-sqft" min="0">
+        </div>
+        <div class="field">
+          <label for="listing-yearBuilt">Year built</label>
+          <input type="number" id="listing-yearBuilt" min="1800" max="2100">
+        </div>
+      </div>
+
+      <div class="field--row" style="margin-top:var(--s4);">
+        <div class="field">
+          <label for="listing-lotSize">Lot size</label>
+          <input type="text" id="listing-lotSize" placeholder="e.g. 0.25 acre or 10,890 sqft">
+        </div>
+        <div class="field">
+          <label for="listing-mlsNumber">MLS number</label>
+          <input type="text" id="listing-mlsNumber">
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:var(--s4);">
+        <label for="listing-description">Description</label>
+        <textarea id="listing-description" rows="6"></textarea>
+      </div>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Features</h3>
+      <div class="chip-input" data-chip-input="features" id="listing-features-chips">
+        <input type="text" placeholder="Type a feature and press Enter">
+      </div>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Open Houses</h3>
+      <div id="listing-openhouses"></div>
+      <button type="button" class="oh-add" id="listing-add-oh">+ Add open house</button>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Photos</h3>
+      <label class="dropzone" id="listing-dropzone">
+        <span>Drop photos here, or click to browse</span>
+        <span class="dropzone__note">JPEG, PNG, or WebP. HEIC not supported — please save as JPEG first.</span>
+        <input type="file" id="listing-photo-input" accept="image/jpeg,image/png,image/webp" multiple>
+      </label>
+      <div id="listing-photo-progress" class="upload-progress"></div>
+      <div id="listing-photo-strip" class="photo-strip"></div>
+
+      <div class="field" style="margin-top:var(--s5);">
+        <label for="listing-slug">URL slug</label>
+        <input type="text" id="listing-slug">
+        <p class="helper-text">Auto-generated from address. Editable. Must be unique.</p>
+      </div>
+
+      <div id="listing-form-error" class="form__error" role="alert" style="display:none;"></div>
+    </form>
+  </div>
+  <div class="drawer__footer">
+    <div class="drawer__footer-left">
+      <button type="button" class="btn btn--danger btn--sm" id="listing-delete-btn" style="display:none;">Delete Listing</button>
+    </div>
+    <div class="drawer__footer-right">
+      <button type="button" class="btn btn--secondary" id="listing-cancel-btn">Cancel</button>
+      <button type="button" class="btn" id="listing-save-btn">Save</button>
+    </div>
+  </div>
+</aside>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script type="module">
+/* ===========================================================
+   Marie Borders CMS — single-file module
+   =========================================================== */
+
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import {
+  initializeFirestore,
+  memoryLocalCache,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  serverTimestamp,
+  Timestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyDV0gn8txrIAgl6Iw-oCyuNK0QkSoIlhlM',
+  authDomain: 'mbreal-83286.firebaseapp.com',
+  projectId: 'mbreal-83286',
+  storageBucket: 'mbreal-83286.firebasestorage.app',
+  messagingSenderId: '884218966489',
+  appId: '1:884218966489:web:bfb1ed0276a7622a30a9c8',
+  measurementId: 'G-NLXR9XZ216'
+};
+
+function isSafari() {
+  const ua = navigator.userAgent || '';
+  if (/Chrome|CriOS|Chromium|Edg|EdgiOS|Firefox|FxiOS|OPR|OPiOS/i.test(ua)) return false;
+  return /Safari/i.test(ua);
+}
+
+const app = initializeApp(firebaseConfig);
+const db = initializeFirestore(app, {
+  localCache: isSafari()
+    ? memoryLocalCache()
+    : persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+/* ===========================================================
+   Toast
+   =========================================================== */
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+function toast(msg, opts) {
+  opts = opts || {};
+  toastEl.textContent = msg;
+  toastEl.classList.toggle('is-error', !!opts.error);
+  toastEl.classList.add('is-visible');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('is-visible'), 2000);
+}
+
+/* ===========================================================
+   Auth gate
+   =========================================================== */
+const loginWrap = document.getElementById('login-wrap');
+const cmsShell  = document.getElementById('cms-shell');
+const userEmailEl = document.getElementById('cms-user-email');
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    userEmailEl.textContent = user.email || '(unknown)';
+    loginWrap.style.display = 'none';
+    cmsShell.classList.add('is-ready');
+    init();
+  } else {
+    cmsShell.classList.remove('is-ready');
+    loginWrap.style.display = 'flex';
+  }
+});
+
+const loginForm = document.getElementById('login-form');
+const loginError = document.getElementById('login-error');
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  loginError.classList.remove('is-visible');
+  loginError.textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) {
+    showLoginError('Please enter your email and password.');
+    return;
+  }
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    const code = err && err.code || '';
+    let msg = 'Sign-in failed. Please check your email and password.';
+    if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') msg = 'Incorrect email or password.';
+    else if (code === 'auth/user-not-found') msg = 'No account found with that email.';
+    else if (code === 'auth/too-many-requests') msg = 'Too many attempts — please wait a minute and try again.';
+    showLoginError(msg);
+  }
+});
+
+document.getElementById('login-reset-btn').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) {
+    showLoginError('Enter your email above first, then tap Forgot password.');
+    return;
+  }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showLoginError('Reset email sent. Check your inbox.', false);
+  } catch (err) {
+    showLoginError('Could not send reset email. Please contact Daniel.');
+  }
+});
+
+function showLoginError(msg) {
+  loginError.textContent = msg;
+  loginError.classList.add('is-visible');
+}
+
+document.getElementById('cms-signout-btn').addEventListener('click', async () => {
+  if (hasUnsavedChanges() && !confirm('You have unsaved changes. Sign out anyway?')) return;
+  await signOut(auth);
+  window.location.reload();
+});
+
+/* ===========================================================
+   Tabs
+   =========================================================== */
+const tabBtns = document.querySelectorAll('.cms-tab');
+const panels  = document.querySelectorAll('.cms-panel');
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.getAttribute('data-tab');
+    if (hasUnsavedChanges() && !confirm('You have unsaved changes. Discard?')) return;
+    clearUnsaved();
+    tabBtns.forEach(b => b.classList.toggle('is-active', b === btn));
+    panels.forEach(p => p.classList.toggle('is-active', p.getAttribute('data-panel') === target));
+  });
+});
+
+/* ===========================================================
+   Unsaved-changes tracking (panels only — drawer has its own)
+   =========================================================== */
+const dirtyForms = new Set();
+function markDirty(formId) { dirtyForms.add(formId); }
+function clearUnsaved() { dirtyForms.clear(); }
+function hasUnsavedChanges() { return dirtyForms.size > 0; }
+
+['about-form', 'home-form', 'contact-form-cms'].forEach(id => {
+  const f = document.getElementById(id);
+  if (!f) return;
+  f.addEventListener('input', () => markDirty(id));
+});
+
+window.addEventListener('beforeunload', (e) => {
+  if (hasUnsavedChanges() || drawerDirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+/* ===========================================================
+   INIT — runs after sign-in
+   =========================================================== */
+let initDone = false;
+function init() {
+  if (initDone) return;
+  initDone = true;
+  startListingsSubscription();
+  loadHomeForm();
+  loadAboutForm();
+  loadContactForm();
+}
+
+/* ===========================================================
+   LISTINGS LIST
+   =========================================================== */
+const listingsList = document.getElementById('listings-list');
+let listingsCache = [];
+let currentFilter = 'all';
+
+function fmtPrice(n) {
+  if (n == null || isNaN(n)) return '';
+  return '$' + Number(n).toLocaleString('en-US');
+}
+function fmtNumber(n) {
+  if (n == null || isNaN(n)) return '';
+  return Number(n).toLocaleString('en-US');
+}
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function startListingsSubscription() {
+  const q = query(collection(db, 'listings'), orderBy('listedAt', 'desc'));
+  onSnapshot(q, (snap) => {
+    listingsCache = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    renderListings();
+  }, (err) => {
+    console.warn('[listings] subscription error:', err && err.message);
+    listingsList.innerHTML = '<div class="empty-list">Could not load listings. ' + escapeHtml(err.message || '') + '</div>';
+  });
+}
+
+function renderListings() {
+  const items = currentFilter === 'all'
+    ? listingsCache.slice()
+    : listingsCache.filter(l => l.status === currentFilter);
+
+  if (!items.length) {
+    listingsList.innerHTML = '<div class="empty-list">No listings yet. Click "Add New Listing" to create one.</div>';
+    return;
+  }
+
+  listingsList.innerHTML = items.map(l => {
+    const photos = Array.isArray(l.photos) ? l.photos : [];
+    const primary = photos.find(p => p.isPrimary) || photos[0];
+    const thumb = primary && primary.url
+      ? '<img src="' + escapeHtml(primary.url) + '" alt="">'
+      : '<svg viewBox="0 0 80 60" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="60" fill="#f1ece2"/><text x="40" y="35" font-size="10" fill="#a8854c" text-anchor="middle">no photo</text></svg>';
+    const addr = (l.address && l.address.street) || '(no address)';
+    const cityzip = l.address ? (l.address.city + ', ' + (l.address.state || '') + ' ' + (l.address.zip || '')) : '';
+    const price = l.status === 'sold' && l.soldPrice ? fmtPrice(l.soldPrice) : fmtPrice(l.listPrice);
+    const stats = [
+      l.beds ? l.beds + ' bd' : null,
+      l.baths ? l.baths + ' ba' : null,
+      l.sqft ? fmtNumber(l.sqft) + ' sqft' : null
+    ].filter(Boolean).join(' · ');
+    return ''
+      + '<div class="listing-row">'
+      +   '<div class="listing-row__thumb">' + thumb + '</div>'
+      +   '<div class="listing-row__main">'
+      +     '<div class="listing-row__price">'
+      +       '<span class="row-pill row-pill--' + l.status + '">' + (l.status || '') + '</span>'
+      +       price
+      +       (l.featured ? '<span class="helper-text helper-text--inline">Featured</span>' : '')
+      +     '</div>'
+      +     '<div class="listing-row__addr">' + escapeHtml(addr) + ' — ' + escapeHtml(cityzip) + '</div>'
+      +     '<div class="listing-row__stats">' + escapeHtml(stats) + '</div>'
+      +   '</div>'
+      +   '<div class="listing-row__actions">'
+      +     '<button type="button" class="btn btn--secondary btn--sm" data-edit="' + escapeHtml(l.id) + '">Edit</button>'
+      +     '<button type="button" class="btn btn--danger btn--sm" data-delete="' + escapeHtml(l.id) + '">Delete</button>'
+      +   '</div>'
+      + '</div>';
+  }).join('');
+
+  listingsList.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => openListingDrawer(btn.getAttribute('data-edit')));
+  });
+  listingsList.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', () => deleteListing(btn.getAttribute('data-delete')));
+  });
+}
+
+document.querySelectorAll('.listings-toolbar .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.listings-toolbar .chip').forEach(c => c.classList.remove('is-active'));
+    chip.classList.add('is-active');
+    currentFilter = chip.getAttribute('data-filter');
+    renderListings();
+  });
+});
+
+document.getElementById('add-listing-btn').addEventListener('click', () => openListingDrawer(null));
+
+async function deleteListing(id) {
+  const listing = listingsCache.find(l => l.id === id);
+  const label = listing && listing.address ? (listing.address.street + ', ' + listing.address.city) : id;
+  if (!confirm('Delete "' + label + '"? This cannot be undone.')) return;
+  try {
+    // Best-effort photo cleanup
+    if (listing && Array.isArray(listing.photos)) {
+      for (const p of listing.photos) {
+        if (p.storagePath) {
+          try { await deleteObject(storageRef(storage, p.storagePath)); } catch (e) { /* tolerate */ }
+        }
+      }
+    }
+    await deleteDoc(doc(db, 'listings', id));
+    toast('Listing deleted');
+  } catch (err) {
+    toast('Delete failed: ' + (err.message || err), { error: true });
+  }
+}
+
+/* ===========================================================
+   LISTING DRAWER
+   =========================================================== */
+const drawer = document.getElementById('listing-drawer');
+const drawerBackdrop = document.getElementById('drawer-backdrop');
+let drawerEditingId = null;
+let drawerPhotos = []; // [{url, storagePath, caption?, order, isPrimary}]
+let drawerFeatures = [];
+let drawerDirty = false;
+let drawerSlugManuallyEdited = false;
+
+function markDrawerDirty() { drawerDirty = true; }
+
+function openListingDrawer(id) {
+  drawerEditingId = id || null;
+  drawerDirty = false;
+  drawerSlugManuallyEdited = false;
+
+  document.getElementById('drawer-title').textContent = id ? 'Edit Listing' : 'New Listing';
+  document.getElementById('listing-delete-btn').style.display = id ? 'inline-block' : 'none';
+  document.getElementById('listing-form-error').style.display = 'none';
+
+  // Reset form
+  const f = document.getElementById('listing-form');
+  f.reset();
+  document.getElementById('listing-state').value = 'CA';
+
+  drawerPhotos = [];
+  drawerFeatures = [];
+
+  // Reset open houses
+  document.getElementById('listing-openhouses').innerHTML = '';
+
+  if (id) {
+    const l = listingsCache.find(x => x.id === id);
+    if (!l) {
+      toast('Listing not found', { error: true });
+      return;
+    }
+    document.getElementById('listing-id').value = l.id;
+    document.getElementById('listing-status').value = l.status || 'active';
+    document.getElementById('listing-featured').checked = !!l.featured;
+    document.getElementById('listing-listPrice').value = l.listPrice != null ? fmtNumber(l.listPrice) : '';
+    document.getElementById('listing-soldPrice').value = l.soldPrice != null ? fmtNumber(l.soldPrice) : '';
+    document.getElementById('listing-street').value = l.address && l.address.street || '';
+    document.getElementById('listing-city').value = l.address && l.address.city || '';
+    document.getElementById('listing-state').value = l.address && l.address.state || 'CA';
+    document.getElementById('listing-zip').value = l.address && l.address.zip || '';
+    document.getElementById('listing-beds').value = l.beds || '';
+    document.getElementById('listing-baths').value = l.baths || '';
+    document.getElementById('listing-halfBaths').value = l.halfBaths || '';
+    document.getElementById('listing-sqft').value = l.sqft || '';
+    document.getElementById('listing-yearBuilt').value = l.yearBuilt || '';
+    document.getElementById('listing-lotSize').value = l.lotSize || '';
+    document.getElementById('listing-mlsNumber').value = l.mlsNumber || '';
+    document.getElementById('listing-description').value = l.description || '';
+    document.getElementById('listing-slug').value = l.slug || '';
+    drawerSlugManuallyEdited = true; // assume existing slug is canon
+
+    drawerFeatures = Array.isArray(l.features) ? l.features.slice() : [];
+    drawerPhotos = Array.isArray(l.photos) ? JSON.parse(JSON.stringify(l.photos)) : [];
+
+    (Array.isArray(l.openHouses) ? l.openHouses : []).forEach(oh => addOpenHouseRow(oh));
+  } else {
+    document.getElementById('listing-id').value = '';
+  }
+
+  renderFeatureChips();
+  renderPhotoStrip();
+  updateSoldPriceVisibility();
+
+  drawerBackdrop.classList.add('is-open');
+  drawer.classList.add('is-open');
+  drawer.setAttribute('aria-hidden', 'false');
+}
+
+function closeListingDrawer(force) {
+  if (drawerDirty && !force && !confirm('Discard changes to this listing?')) return;
+  drawerBackdrop.classList.remove('is-open');
+  drawer.classList.remove('is-open');
+  drawer.setAttribute('aria-hidden', 'true');
+  drawerDirty = false;
+  drawerEditingId = null;
+}
+
+document.getElementById('drawer-close').addEventListener('click', () => closeListingDrawer(false));
+document.getElementById('listing-cancel-btn').addEventListener('click', () => closeListingDrawer(false));
+drawerBackdrop.addEventListener('click', () => closeListingDrawer(false));
+
+// Track dirty across all drawer inputs
+document.getElementById('listing-form').addEventListener('input', markDrawerDirty);
+document.getElementById('listing-form').addEventListener('change', markDrawerDirty);
+
+// Status -> sold price visibility
+document.getElementById('listing-status').addEventListener('change', updateSoldPriceVisibility);
+function updateSoldPriceVisibility() {
+  const isSold = document.getElementById('listing-status').value === 'sold';
+  document.getElementById('listing-soldPrice-field').style.display = isSold ? '' : 'none';
+}
+
+// Slug auto-generation from street+city, unless user touched it
+['listing-street', 'listing-city'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    if (drawerSlugManuallyEdited) return;
+    const street = document.getElementById('listing-street').value;
+    const city = document.getElementById('listing-city').value;
+    document.getElementById('listing-slug').value = slugify(street + ' ' + city);
+  });
+});
+document.getElementById('listing-slug').addEventListener('input', () => { drawerSlugManuallyEdited = true; });
+
+function slugify(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+// Price formatting on blur
+['listing-listPrice', 'listing-soldPrice'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('blur', () => {
+    const n = parseInt(String(el.value).replace(/[^\d]/g, ''), 10);
+    el.value = isFinite(n) ? fmtNumber(n) : '';
+  });
+});
+
+/* ----- Open houses repeater ----- */
+function addOpenHouseRow(oh) {
+  oh = oh || { date: '', startTime: '', endTime: '' };
+  const wrap = document.getElementById('listing-openhouses');
+  const row = document.createElement('div');
+  row.className = 'oh-row';
+  row.innerHTML = ''
+    + '<div class="field"><label>Date</label><input type="date" data-oh="date" value="' + escapeHtml(oh.date || '') + '"></div>'
+    + '<div class="field"><label>Start</label><input type="text" data-oh="startTime" placeholder="1:00 PM" value="' + escapeHtml(oh.startTime || '') + '"></div>'
+    + '<div class="field"><label>End</label><input type="text" data-oh="endTime" placeholder="4:00 PM" value="' + escapeHtml(oh.endTime || '') + '"></div>'
+    + '<button type="button" class="btn btn--secondary btn--sm">Remove</button>';
+  row.querySelector('button').addEventListener('click', () => { row.remove(); markDrawerDirty(); });
+  row.querySelectorAll('input').forEach(i => i.addEventListener('input', markDrawerDirty));
+  wrap.appendChild(row);
+}
+document.getElementById('listing-add-oh').addEventListener('click', () => { addOpenHouseRow(); markDrawerDirty(); });
+
+function readOpenHouses() {
+  const rows = document.getElementById('listing-openhouses').querySelectorAll('.oh-row');
+  return Array.from(rows).map(r => ({
+    date: r.querySelector('[data-oh="date"]').value || '',
+    startTime: r.querySelector('[data-oh="startTime"]').value || '',
+    endTime: r.querySelector('[data-oh="endTime"]').value || ''
+  })).filter(oh => oh.date || oh.startTime || oh.endTime);
+}
+
+/* ----- Chip inputs (features + credentials) ----- */
+function makeChipInput(containerId, store, onChange) {
+  const container = document.getElementById(containerId);
+  const input = container.querySelector('input');
+
+  function render() {
+    // Remove existing tags
+    container.querySelectorAll('.chip-tag').forEach(t => t.remove());
+    store.forEach((tag, i) => {
+      const el = document.createElement('span');
+      el.className = 'chip-tag';
+      el.innerHTML = escapeHtml(tag) + ' <button type="button" aria-label="Remove">&times;</button>';
+      el.querySelector('button').addEventListener('click', () => {
+        store.splice(i, 1);
+        render();
+        onChange && onChange();
+      });
+      container.insertBefore(el, input);
+    });
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const v = input.value.trim();
+      if (!v) return;
+      store.push(v);
+      input.value = '';
+      render();
+      onChange && onChange();
+    } else if (e.key === 'Backspace' && !input.value && store.length) {
+      store.pop();
+      render();
+      onChange && onChange();
+    }
+  });
+
+  return { render };
+}
+
+let featureChipApi;
+function renderFeatureChips() {
+  if (!featureChipApi) featureChipApi = makeChipInput('listing-features-chips', drawerFeatures, markDrawerDirty);
+  featureChipApi.render();
+}
+
+let credChipApi;
+let aboutCredentials = [];
+function renderCredentialChips() {
+  if (!credChipApi) credChipApi = makeChipInput('about-credentials-chips', aboutCredentials, () => markDirty('about-form'));
+  credChipApi.render();
+}
+
+/* ----- Photo upload + strip ----- */
+const dropzone = document.getElementById('listing-dropzone');
+const photoInput = document.getElementById('listing-photo-input');
+const photoStrip = document.getElementById('listing-photo-strip');
+const photoProgress = document.getElementById('listing-photo-progress');
+
+['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('is-drag'); }));
+['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('is-drag'); }));
+dropzone.addEventListener('drop', (e) => {
+  const files = e.dataTransfer && e.dataTransfer.files;
+  if (files && files.length) handlePhotoFiles(files);
+});
+photoInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files.length) handlePhotoFiles(e.target.files);
+});
+
+function uuid() {
+  return 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+}
+
+async function resizeImageIfNeeded(file) {
+  if (file.size < 200000) return file; // < 200KB, skip
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) return file;
+  const maxW = 2000;
+  if (bitmap.width <= maxW) {
+    bitmap.close && bitmap.close();
+    return file;
+  }
+  const ratio = maxW / bitmap.width;
+  const w = maxW;
+  const h = Math.round(bitmap.height * ratio);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close && bitmap.close();
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : file);
+    }, 'image/jpeg', 0.85);
+  });
+}
+
+async function handlePhotoFiles(fileList) {
+  // Determine listingId (we need one to scope storage path). If creating new,
+  // pre-mint a doc id by creating the doc first OR use a temp folder. We'll
+  // use a temp folder keyed on a generated id and reconcile at save.
+  if (!drawerEditingId) {
+    if (!window._tempListingId) window._tempListingId = 'temp_' + Date.now();
+  }
+  const scopeId = drawerEditingId || window._tempListingId;
+  markDrawerDirty();
+
+  for (const file of fileList) {
+    if (/heic|heif/i.test(file.type) || /\.heic$/i.test(file.name)) {
+      toast('Please save your photo as JPEG before uploading.', { error: true });
+      continue;
+    }
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      toast('Unsupported image type: ' + file.type, { error: true });
+      continue;
+    }
+
+    const item = document.createElement('div');
+    item.className = 'upload-progress__item';
+    item.innerHTML = '<span>' + escapeHtml(file.name) + '</span><div class="upload-progress__bar"><div class="upload-progress__fill"></div></div><span class="pct">0%</span>';
+    photoProgress.appendChild(item);
+    const fill = item.querySelector('.upload-progress__fill');
+    const pct  = item.querySelector('.pct');
+
+    try {
+      const prepared = await resizeImageIfNeeded(file);
+      const ext = (prepared.type === 'image/png' ? 'png' : prepared.type === 'image/webp' ? 'webp' : 'jpg');
+      const path = 'listing-photos/' + scopeId + '/' + uuid() + '.' + ext;
+      const ref = storageRef(storage, path);
+      const task = uploadBytesResumable(ref, prepared, { contentType: prepared.type });
+      await new Promise((resolve, reject) => {
+        task.on('state_changed', (snap) => {
+          const p = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+          fill.style.width = p + '%';
+          pct.textContent = p + '%';
+        }, reject, resolve);
+      });
+      const url = await getDownloadURL(task.snapshot.ref);
+      drawerPhotos.push({
+        url,
+        storagePath: path,
+        caption: '',
+        order: drawerPhotos.length,
+        isPrimary: drawerPhotos.length === 0
+      });
+      renderPhotoStrip();
+      item.remove();
+    } catch (err) {
+      pct.textContent = 'failed';
+      console.warn('upload failed', err);
+      toast('Photo upload failed: ' + (err.message || ''), { error: true });
+    }
+  }
+}
+
+function renderPhotoStrip() {
+  drawerPhotos.sort((a, b) => (a.order || 0) - (b.order || 0));
+  photoStrip.innerHTML = drawerPhotos.map((p, i) => {
+    return ''
+      + '<div class="photo-card' + (p.isPrimary ? ' is-primary' : '') + '" draggable="true" data-idx="' + i + '">'
+      +   '<img src="' + escapeHtml(p.url) + '" alt="">'
+      +   '<div class="photo-card__actions">'
+      +     '<button type="button" class="photo-card__star' + (p.isPrimary ? ' is-on' : '') + '" data-star="' + i + '">' + (p.isPrimary ? 'Primary' : 'Set primary') + '</button>'
+      +     '<button type="button" class="photo-card__remove" data-remove="' + i + '">Remove</button>'
+      +   '</div>'
+      + '</div>';
+  }).join('');
+
+  photoStrip.querySelectorAll('[data-star]').forEach(b => {
+    b.addEventListener('click', () => {
+      const i = parseInt(b.getAttribute('data-star'), 10);
+      drawerPhotos.forEach((p, j) => { p.isPrimary = (j === i); });
+      renderPhotoStrip();
+      markDrawerDirty();
+    });
+  });
+  photoStrip.querySelectorAll('[data-remove]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const i = parseInt(b.getAttribute('data-remove'), 10);
+      const photo = drawerPhotos[i];
+      if (!confirm('Remove this photo?')) return;
+      if (photo && photo.storagePath) {
+        try { await deleteObject(storageRef(storage, photo.storagePath)); } catch (e) { /* tolerate */ }
+      }
+      drawerPhotos.splice(i, 1);
+      // If we removed primary, promote first remaining
+      if (drawerPhotos.length && !drawerPhotos.some(p => p.isPrimary)) drawerPhotos[0].isPrimary = true;
+      drawerPhotos.forEach((p, j) => { p.order = j; });
+      renderPhotoStrip();
+      markDrawerDirty();
+    });
+  });
+
+  // Drag-to-reorder
+  let dragSrc = null;
+  photoStrip.querySelectorAll('.photo-card').forEach(card => {
+    card.addEventListener('dragstart', () => { dragSrc = card; card.classList.add('is-dragging'); });
+    card.addEventListener('dragend',   () => { card.classList.remove('is-dragging'); dragSrc = null; });
+    card.addEventListener('dragover',  (e) => { e.preventDefault(); });
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!dragSrc || dragSrc === card) return;
+      const from = parseInt(dragSrc.getAttribute('data-idx'), 10);
+      const to   = parseInt(card.getAttribute('data-idx'), 10);
+      const moved = drawerPhotos.splice(from, 1)[0];
+      drawerPhotos.splice(to, 0, moved);
+      drawerPhotos.forEach((p, j) => { p.order = j; });
+      renderPhotoStrip();
+      markDrawerDirty();
+    });
+  });
+}
+
+/* ----- Save listing ----- */
+document.getElementById('listing-save-btn').addEventListener('click', saveListing);
+document.getElementById('listing-delete-btn').addEventListener('click', async () => {
+  if (drawerEditingId) {
+    await deleteListing(drawerEditingId);
+    closeListingDrawer(true);
+  }
+});
+
+async function saveListing() {
+  const errorBox = document.getElementById('listing-form-error');
+  errorBox.style.display = 'none';
+
+  const street = document.getElementById('listing-street').value.trim();
+  const city = document.getElementById('listing-city').value.trim();
+  if (!street || !city) return showFormError('Please enter at least street and city.');
+
+  const slugVal = document.getElementById('listing-slug').value.trim() || slugify(street + ' ' + city);
+
+  // Slug uniqueness check against cache (other docs)
+  const dupe = listingsCache.find(l => l.slug === slugVal && l.id !== drawerEditingId);
+  if (dupe) return showFormError('Slug already in use by another listing. Please edit the slug to be unique.');
+
+  const parsePrice = (id) => {
+    const v = document.getElementById(id).value;
+    const n = parseInt(String(v).replace(/[^\d]/g, ''), 10);
+    return isFinite(n) ? n : null;
+  };
+  const parseNum = (id) => {
+    const v = document.getElementById(id).value;
+    const n = parseFloat(v);
+    return isFinite(n) ? n : null;
+  };
+
+  const status = document.getElementById('listing-status').value;
+  const payload = {
+    status,
+    featured: document.getElementById('listing-featured').checked,
+    listPrice: parsePrice('listing-listPrice'),
+    soldPrice: status === 'sold' ? parsePrice('listing-soldPrice') : null,
+    address: {
+      street,
+      city,
+      state: document.getElementById('listing-state').value.trim() || 'CA',
+      zip: document.getElementById('listing-zip').value.trim() || ''
+    },
+    beds: parseNum('listing-beds') || 0,
+    baths: parseNum('listing-baths') || 0,
+    halfBaths: parseNum('listing-halfBaths'),
+    sqft: parseNum('listing-sqft') || 0,
+    lotSize: document.getElementById('listing-lotSize').value.trim() || null,
+    yearBuilt: parseNum('listing-yearBuilt'),
+    mlsNumber: document.getElementById('listing-mlsNumber').value.trim() || null,
+    description: document.getElementById('listing-description').value.trim() || '',
+    features: drawerFeatures.slice(),
+    photos: drawerPhotos.slice(),
+    openHouses: readOpenHouses(),
+    slug: slugVal,
+    soldAt: status === 'sold' ? (Timestamp.now()) : null
+  };
+
+  try {
+    if (drawerEditingId) {
+      // Don't overwrite listedAt on edits
+      await updateDoc(doc(db, 'listings', drawerEditingId), payload);
+    } else {
+      payload.listedAt = serverTimestamp();
+      const ref = await addDoc(collection(db, 'listings'), payload);
+      // If we used a temp scope id, the photos already uploaded to that path.
+      // That's fine — they live there permanently; storagePath points to the
+      // canonical location for delete-on-removal. Future uploads in this same
+      // drawer session will use the new doc id.
+      drawerEditingId = ref.id;
+    }
+    drawerDirty = false;
+    closeListingDrawer(true);
+    toast('Saved');
+  } catch (err) {
+    showFormError('Save failed: ' + (err.message || err));
+  }
+
+  function showFormError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = 'block';
+  }
+}
+
+/* ===========================================================
+   HOME FORM
+   =========================================================== */
+async function loadHomeForm() {
+  try {
+    const snap = await getDoc(doc(db, 'siteContent', 'home'));
+    const data = snap.exists() ? snap.data() : {};
+    document.getElementById('home-heroHeadline').value = data.heroHeadline || 'Marie Borders';
+    document.getElementById('home-heroSubhead').value  = data.heroSubhead  || 'Marin County Real Estate';
+    document.getElementById('home-introHeading').value = data.introHeading || 'Currently Featured';
+    document.getElementById('home-introBody').value    = data.introBody    || 'As a native of Marin County and a licensed real estate agent since 1999, Marie brings deep local roots and decades of experience to one of the most personal transactions of your life.';
+    dirtyForms.delete('home-form');
+  } catch (e) {
+    console.warn('home load failed:', e.message);
+  }
+}
+
+document.getElementById('home-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    heroHeadline: document.getElementById('home-heroHeadline').value.trim(),
+    heroSubhead:  document.getElementById('home-heroSubhead').value.trim(),
+    introHeading: document.getElementById('home-introHeading').value.trim(),
+    introBody:    document.getElementById('home-introBody').value.trim()
+  };
+  try {
+    await setDoc(doc(db, 'siteContent', 'home'), payload, { merge: true });
+    dirtyForms.delete('home-form');
+    toast('Saved');
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+  }
+});
+
+/* ===========================================================
+   ABOUT FORM
+   =========================================================== */
+async function loadAboutForm() {
+  try {
+    const snap = await getDoc(doc(db, 'siteContent', 'about'));
+    const data = snap.exists() ? snap.data() : {};
+    document.getElementById('about-pageHeading').value = data.pageHeading || 'Get to Know Me';
+    const bios = Array.isArray(data.bioParagraphs) ? data.bioParagraphs : [
+      'As a native of Marin County, having lived, worked and volunteered within the Bay Area all of my life, I understand the area, its varied communities and complex markets intimately. I have been a licensed real estate agent since 1999. That combined with my over 25 years in business, banking and real estate finance makes me uniquely qualified to represent you with confidence in one of the biggest transactions of your life.',
+      'The attributes and qualities that I bring yield exponential results for my clients. I have a strong, decades-long background in sales and marketing with deep roots and countless connections in this community. I continually conduct extensive research of the markets to maintain my expertise and inform my clients of trends.',
+      'I thrive when engaged in frank and honest, productive negotiations, which ultimately leads to smooth transactions for my clients. I utilize the latest technology in addition to engaging my vast professional and personal networks, as I strategize together with you to prepare your property for sale for the right price at the best possible time.'
+    ];
+    document.getElementById('about-bio1').value = bios[0] || '';
+    document.getElementById('about-bio2').value = bios[1] || '';
+    document.getElementById('about-bio3').value = bios[2] || '';
+    aboutCredentials = Array.isArray(data.credentials) ? data.credentials.slice() : [
+      'Real Estate Associate', 'Licensed Since 1999', 'DRE #01256719', 'Marin County Native'
+    ];
+    renderCredentialChips();
+    if (data.headshotUrl) {
+      document.getElementById('about-headshot-preview').src = data.headshotUrl;
+    }
+    dirtyForms.delete('about-form');
+  } catch (e) {
+    console.warn('about load failed:', e.message);
+  }
+}
+
+document.getElementById('about-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    pageHeading: document.getElementById('about-pageHeading').value.trim(),
+    bioParagraphs: [
+      document.getElementById('about-bio1').value.trim(),
+      document.getElementById('about-bio2').value.trim(),
+      document.getElementById('about-bio3').value.trim()
+    ].filter(Boolean),
+    credentials: aboutCredentials.slice()
+  };
+  // Preserve any existing headshotUrl
+  try {
+    const existing = await getDoc(doc(db, 'siteContent', 'about'));
+    if (existing.exists() && existing.data().headshotUrl) {
+      payload.headshotUrl = existing.data().headshotUrl;
+    }
+    await setDoc(doc(db, 'siteContent', 'about'), payload, { merge: true });
+    dirtyForms.delete('about-form');
+    toast('Saved');
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+  }
+});
+
+document.getElementById('about-headshot-replace').addEventListener('click', () => {
+  document.getElementById('about-headshot-input').click();
+});
+document.getElementById('about-headshot-input').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+    toast('Unsupported image type', { error: true });
+    return;
+  }
+  const progress = document.getElementById('about-headshot-progress');
+  progress.innerHTML = '<div class="upload-progress__item"><span>' + escapeHtml(file.name) + '</span><div class="upload-progress__bar"><div class="upload-progress__fill"></div></div><span class="pct">0%</span></div>';
+  const fill = progress.querySelector('.upload-progress__fill');
+  const pct  = progress.querySelector('.pct');
+  try {
+    const prepared = await resizeImageIfNeeded(file);
+    const ext = (prepared.type === 'image/png' ? 'png' : prepared.type === 'image/webp' ? 'webp' : 'jpg');
+    const path = 'site/headshot.' + ext;
+    const ref = storageRef(storage, path);
+    const task = uploadBytesResumable(ref, prepared, { contentType: prepared.type });
+    await new Promise((resolve, reject) => {
+      task.on('state_changed', (snap) => {
+        const p = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        fill.style.width = p + '%';
+        pct.textContent = p + '%';
+      }, reject, resolve);
+    });
+    const url = await getDownloadURL(task.snapshot.ref);
+    await setDoc(doc(db, 'siteContent', 'about'), { headshotUrl: url }, { merge: true });
+    document.getElementById('about-headshot-preview').src = url;
+    progress.innerHTML = '';
+    toast('Headshot updated');
+  } catch (err) {
+    toast('Headshot upload failed: ' + (err.message || ''), { error: true });
+  }
+});
+
+/* ===========================================================
+   CONTACT FORM
+   =========================================================== */
+async function loadContactForm() {
+  try {
+    const snap = await getDoc(doc(db, 'siteContent', 'contact'));
+    const data = snap.exists() ? snap.data() : {};
+    document.getElementById('contact-displayEmail').value = data.displayEmail || 'marie@marinsfinest.com';
+    document.getElementById('contact-phone').value        = data.phone        || '(415) 601-1715';
+    document.getElementById('contact-license').value      = data.license      || 'DRE #01256719';
+    document.getElementById('contact-brokerage').value    = data.brokerage    || "Marin's Finest";
+    document.getElementById('contact-brokerageUrl').value = data.brokerageUrl || 'https://marinsfinest.com';
+    dirtyForms.delete('contact-form-cms');
+  } catch (e) {
+    console.warn('contact load failed:', e.message);
+  }
+}
+
+document.getElementById('contact-form-cms').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    displayEmail: document.getElementById('contact-displayEmail').value.trim(),
+    phone:        document.getElementById('contact-phone').value.trim(),
+    license:      document.getElementById('contact-license').value.trim(),
+    brokerage:    document.getElementById('contact-brokerage').value.trim(),
+    brokerageUrl: document.getElementById('contact-brokerageUrl').value.trim()
+  };
+  try {
+    await setDoc(doc(db, 'siteContent', 'contact'), payload, { merge: true });
+    dirtyForms.delete('contact-form-cms');
+    toast('Saved');
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+  }
+});
+</script>
+
+</body>
+</html>

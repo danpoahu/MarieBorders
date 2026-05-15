@@ -1,165 +1,213 @@
-/* Marie Borders — listings data layer
- * Phase 1: in-memory sample data.
- * PHASE-3: replace SAMPLE_LISTINGS with Firestore query (collection 'listings').
+/* Marie Borders — listings data layer (Phase 3)
  *
- * Schema contract (DO NOT change field names without coordinating with Phase 3):
- *   id, status, listPrice, soldPrice, address{street,city,state,zip},
- *   beds, baths, halfBaths, sqft, lotSize, yearBuilt, mlsNumber,
- *   description, features[], photos[{url,caption,order,isPrimary}],
- *   listedAt (ISO), soldAt (ISO|null), openHouses[{date,startTime,endTime}],
- *   slug, featured
+ * Phase 3 wires this to Firestore collection `listings`, ordered by listedAt desc.
  *
- * Photo notes:
- *   For Phase 1 we use SVG placeholders generated inline so the page is
- *   credible at review without requiring large binary downloads. Daniel
- *   will swap these for real listing photos once Marie provides them.
- *   The first photo of each listing uses the approved hero.jpg as a
- *   warm "feature" stand-in.
+ * Public API (preserved from Phase 1 — DO NOT change signatures, multiple
+ * pages consume these methods synchronously after `await MB.listings.ready`):
+ *
+ *   MB.listings.getAll(filter)       -> Listing[]
+ *   MB.listings.getById(id)          -> Listing | null
+ *   MB.listings.getFeatured(limit)   -> Listing[]
+ *
+ * New in Phase 3:
+ *
+ *   MB.listings.ready                -> Promise that resolves after the
+ *                                       first Firestore snapshot lands.
+ *                                       Pages should await this before
+ *                                       reading the sync getters.
+ *   MB.listings.subscribeAll(cb)     -> Live subscription. cb(items) fires
+ *                                       on every snapshot. Returns an
+ *                                       unsubscribe function. for-sale.html
+ *                                       uses this so a new listing added
+ *                                       in the CMS appears without refresh.
+ *
+ * If the collection is empty (day-1 state), the getters return [] and the
+ * consuming pages render their empty states ("New listings coming soon").
+ *
+ * ---------------------------------------------------------------------------
+ * SCHEMA REFERENCE — also enforced by firestore.rules at repo root.
+ * Kept here for Marie's CMS author + future devs. The original Phase 1
+ * SAMPLE_LISTINGS array (commented out below) is the canonical example of
+ * field names, casing, and shape. Do NOT delete it without updating both
+ * firestore.rules AND cms.html field bindings.
+ *
+ *   listings/{id} {
+ *     status: 'active' | 'pending' | 'sold'
+ *     listPrice: number
+ *     soldPrice: number | null
+ *     address: { street, city, state, zip }
+ *     beds: number
+ *     baths: number
+ *     halfBaths: number | null
+ *     sqft: number
+ *     lotSize: string | null
+ *     yearBuilt: number | null
+ *     mlsNumber: string | null
+ *     description: string
+ *     features: string[]
+ *     photos: [{ url, storagePath, caption?, order: number, isPrimary: boolean }]
+ *     listedAt: Timestamp
+ *     soldAt: Timestamp | null
+ *     openHouses: [{ date: 'YYYY-MM-DD', startTime: string, endTime: string }]
+ *     slug: string
+ *     featured: boolean
+ *   }
+ * ---------------------------------------------------------------------------
  */
 
 (function () {
   'use strict';
   window.MB = window.MB || {};
 
-  // ---------- SAMPLE DATA (Phase 1 only) ----------
-  // PHASE-3: replace with Firestore query
+  // ---------- SCHEMA REFERENCE (Phase 1 sample data, kept for shape) ----------
+  /*
   var SAMPLE_LISTINGS = [
     {
       id: 'mill-valley-victorian-1923',
       status: 'active',
       listPrice: 2895000,
       soldPrice: null,
-      address: {
-        street: '127 Lovell Avenue',
-        city: 'Mill Valley',
-        state: 'CA',
-        zip: '94941'
-      },
-      beds: 4,
-      baths: 3,
-      halfBaths: 1,
-      sqft: 2840,
-      lotSize: '0.18 acre',
-      yearBuilt: 1923,
+      address: { street: '127 Lovell Avenue', city: 'Mill Valley', state: 'CA', zip: '94941' },
+      beds: 4, baths: 3, halfBaths: 1,
+      sqft: 2840, lotSize: '0.18 acre', yearBuilt: 1923,
       mlsNumber: 'MRN-22481',
-      description: 'A beautifully restored Mill Valley Victorian moments from downtown and the Old Mill Park trailhead. Period millwork and original heart-pine floors are paired with a thoughtfully reimagined chef’s kitchen, sun-filled breakfast nook, and a private rear garden anchored by mature live oaks. The primary suite occupies its own upper level with a treetop reading alcove and spa-style bath.',
-      features: [
-        'Original heart-pine floors',
-        'Chef’s kitchen with marble island',
-        'Spa-style primary bath',
-        'Detached studio / home office',
-        'Mature garden with live oaks',
-        'Two-car off-street parking',
-        'EV-ready electrical service',
-        'Walk-to-town location'
-      ],
+      description: '...',
+      features: ['Original heart-pine floors', '...'],
       photos: [
         { url: 'assets/images/hero.jpg', caption: 'Marin views', order: 0, isPrimary: true },
-        { url: 'placeholder:Living Room', order: 1, isPrimary: false },
-        { url: 'placeholder:Kitchen',     order: 2, isPrimary: false },
-        { url: 'placeholder:Garden',      order: 3, isPrimary: false }
+        { url: 'placeholder:Living Room', order: 1, isPrimary: false }
       ],
       listedAt: '2026-04-22T00:00:00.000Z',
       soldAt: null,
-      openHouses: [
-        { date: '2026-05-17', startTime: '1:00 PM', endTime: '4:00 PM' },
-        { date: '2026-05-18', startTime: '1:00 PM', endTime: '4:00 PM' }
-      ],
+      openHouses: [{ date: '2026-05-17', startTime: '1:00 PM', endTime: '4:00 PM' }],
       slug: 'mill-valley-victorian-1923',
       featured: true
-    },
-    {
-      id: 'tiburon-bay-view-contemporary',
-      status: 'active',
-      listPrice: 4650000,
-      soldPrice: null,
-      address: {
-        street: '88 Paradise Drive',
-        city: 'Tiburon',
-        state: 'CA',
-        zip: '94920'
-      },
-      beds: 5,
-      baths: 4,
-      halfBaths: 1,
-      sqft: 4120,
-      lotSize: '0.42 acre',
-      yearBuilt: 2008,
-      mlsNumber: 'MRN-22512',
-      description: 'Sited on a rare south-facing knoll, this contemporary delivers panoramic Bay and San Francisco skyline views from nearly every principal room. Walls of glass open to a wraparound terrace and infinity-edge pool. The lower level offers a guest suite, media room, and a wine cellar appointed in walnut and limestone.',
-      features: [
-        'Panoramic Bay and skyline views',
-        'Infinity-edge pool and spa',
-        'Walls of glass to wraparound terrace',
-        'Walnut and limestone wine cellar',
-        'Lower-level guest suite',
-        'Media room with acoustic treatment',
-        'Three-car garage with EV charging',
-        'Smart-home automation throughout'
-      ],
-      photos: [
-        { url: 'placeholder:Bay View',   order: 0, isPrimary: true },
-        { url: 'placeholder:Great Room', order: 1, isPrimary: false },
-        { url: 'placeholder:Terrace',    order: 2, isPrimary: false },
-        { url: 'placeholder:Pool',       order: 3, isPrimary: false }
-      ],
-      listedAt: '2026-05-01T00:00:00.000Z',
-      soldAt: null,
-      openHouses: [
-        { date: '2026-05-18', startTime: '2:00 PM', endTime: '4:30 PM' }
-      ],
-      slug: 'tiburon-bay-view-contemporary',
-      featured: true
-    },
-    {
-      id: 'san-anselmo-craftsman-cottage',
-      status: 'pending',
-      listPrice: 1795000,
-      soldPrice: null,
-      address: {
-        street: '42 Bolinas Avenue',
-        city: 'San Anselmo',
-        state: 'CA',
-        zip: '94960'
-      },
-      beds: 3,
-      baths: 2,
-      halfBaths: null,
-      sqft: 1680,
-      lotSize: '0.12 acre',
-      yearBuilt: 1916,
-      mlsNumber: 'MRN-22443',
-      description: 'Storybook Craftsman cottage just blocks from San Anselmo Avenue. Welcoming front porch, built-in cabinetry, and box-beam ceilings retain the period charm, while a sympathetic kitchen and bath remodel make daily life effortless. A level rear yard offers room for a dining patio, lawn, and raised beds.',
-      features: [
-        'Period Craftsman millwork',
-        'Box-beam dining ceiling',
-        'Updated kitchen with quartz counters',
-        'Front porch with bench swing',
-        'Level rear yard with patio',
-        'Detached one-car garage',
-        'Walk to San Anselmo Avenue'
-      ],
-      photos: [
-        { url: 'placeholder:Front Elevation', order: 0, isPrimary: true },
-        { url: 'placeholder:Living Room',     order: 1, isPrimary: false },
-        { url: 'placeholder:Back Yard',       order: 2, isPrimary: false }
-      ],
-      listedAt: '2026-04-08T00:00:00.000Z',
-      soldAt: null,
-      openHouses: [],
-      slug: 'san-anselmo-craftsman-cottage',
-      featured: true
     }
+    // ... see git history / Phase 1 listings.js for two more samples
   ];
+  */
+
+  // ---------- In-memory cache populated by Firestore ----------
+  var CACHE = [];
+  var readyResolve;
+  var readyPromise = new Promise(function (res) { readyResolve = res; });
+  var liveUnsub = null;
+  var subscribers = [];
+  var hasFirstSnapshot = false;
+
+  // Normalize a Firestore doc into the Phase-1 listing shape consumers expect.
+  function normalize(snap) {
+    var d = snap.data() || {};
+    // listedAt may arrive as a Firestore Timestamp; expose ISO for legacy code.
+    var listedAtIso = null;
+    if (d.listedAt && typeof d.listedAt.toDate === 'function') {
+      listedAtIso = d.listedAt.toDate().toISOString();
+    } else if (typeof d.listedAt === 'string') {
+      listedAtIso = d.listedAt;
+    }
+    var soldAtIso = null;
+    if (d.soldAt && typeof d.soldAt.toDate === 'function') {
+      soldAtIso = d.soldAt.toDate().toISOString();
+    } else if (typeof d.soldAt === 'string') {
+      soldAtIso = d.soldAt;
+    }
+    return {
+      id: snap.id,
+      status: d.status || 'active',
+      listPrice: typeof d.listPrice === 'number' ? d.listPrice : null,
+      soldPrice: typeof d.soldPrice === 'number' ? d.soldPrice : null,
+      address: d.address || { street: '', city: '', state: 'CA', zip: '' },
+      beds: typeof d.beds === 'number' ? d.beds : 0,
+      baths: typeof d.baths === 'number' ? d.baths : 0,
+      halfBaths: typeof d.halfBaths === 'number' ? d.halfBaths : null,
+      sqft: typeof d.sqft === 'number' ? d.sqft : 0,
+      lotSize: d.lotSize || null,
+      yearBuilt: typeof d.yearBuilt === 'number' ? d.yearBuilt : null,
+      mlsNumber: d.mlsNumber || null,
+      description: d.description || '',
+      features: Array.isArray(d.features) ? d.features : [],
+      photos: Array.isArray(d.photos) ? d.photos : [],
+      listedAt: listedAtIso,
+      soldAt: soldAtIso,
+      openHouses: Array.isArray(d.openHouses) ? d.openHouses : [],
+      slug: d.slug || snap.id,
+      featured: !!d.featured
+    };
+  }
+
+  // Start a single live subscription against /listings ordered by listedAt desc.
+  // All subscribers + the in-memory cache feed from this one stream.
+  function startLiveSubscription() {
+    if (liveUnsub) return;
+    var fb = window.MB.firebase;
+    if (!fb || !fb.db || !fb.fs) {
+      // Firebase not loaded — likely a network failure or the firebase-init.js
+      // module didn't run. Resolve ready with an empty list so consumers stop waiting.
+      hasFirstSnapshot = true;
+      readyResolve();
+      return;
+    }
+    var fs = fb.fs;
+    try {
+      var q = fs.query(fs.collection(fb.db, 'listings'), fs.orderBy('listedAt', 'desc'));
+      liveUnsub = fs.onSnapshot(q, function (snap) {
+        CACHE = snap.docs.map(normalize);
+        hasFirstSnapshot = true;
+        readyResolve();
+        // Fan out to all subscribers
+        subscribers.slice().forEach(function (cb) {
+          try { cb(CACHE.slice()); } catch (e) { /* swallow */ }
+        });
+      }, function (err) {
+        // Permission denied, network failure, missing index, etc.
+        // eslint-disable-next-line no-console
+        console.warn('[MB.listings] Firestore subscription error:', err && err.message);
+        hasFirstSnapshot = true;
+        readyResolve();
+      });
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('[MB.listings] Failed to start subscription:', e && e.message);
+      hasFirstSnapshot = true;
+      readyResolve();
+    }
+  }
+
+  // Wait for window.MB.firebase to be present (firebase-init.js is a module
+  // and may resolve a tick after this classic script parses). We listen for
+  // the custom event AND fall back to a short poll.
+  function whenFirebaseReady(cb) {
+    if (window.MB.firebase && window.MB.firebase.db) { cb(); return; }
+    var done = false;
+    function finish() { if (done) return; done = true; cb(); }
+    window.addEventListener('mb:firebase-ready', finish, { once: true });
+    // Hard ceiling so we don't hang forever if firebase-init.js failed to load
+    var tries = 0;
+    var iv = setInterval(function () {
+      tries += 1;
+      if (window.MB.firebase && window.MB.firebase.db) {
+        clearInterval(iv);
+        finish();
+      } else if (tries > 40) { // ~4 seconds
+        clearInterval(iv);
+        finish();
+      }
+    }, 100);
+  }
+
+  whenFirebaseReady(startLiveSubscription);
 
   // ---------- Public API ----------
   MB.listings = {
+    ready: readyPromise,
+
     /**
      * Get all listings, optionally filtered by status.
      * filter: 'all' | 'active' | 'pending' | 'sold' (case-insensitive)
+     * Sync — call after awaiting MB.listings.ready.
      */
     getAll: function (filter) {
-      var data = SAMPLE_LISTINGS.slice();
+      var data = CACHE.slice();
       if (!filter || String(filter).toLowerCase() === 'all') return data;
       var f = String(filter).toLowerCase();
       return data.filter(function (l) { return l.status === f; });
@@ -167,20 +215,39 @@
 
     /**
      * Get a single listing by id.
+     * Sync — call after awaiting MB.listings.ready.
      */
     getById: function (id) {
       if (!id) return null;
-      var found = SAMPLE_LISTINGS.filter(function (l) { return l.id === id; });
+      var found = CACHE.filter(function (l) { return l.id === id; });
       return found.length ? found[0] : null;
     },
 
     /**
      * Get featured listings, optionally capped to `limit`.
+     * Sync — call after awaiting MB.listings.ready.
      */
     getFeatured: function (limit) {
-      var featured = SAMPLE_LISTINGS.filter(function (l) { return !!l.featured; });
+      var featured = CACHE.filter(function (l) { return !!l.featured; });
       if (typeof limit === 'number' && limit > 0) featured = featured.slice(0, limit);
       return featured;
+    },
+
+    /**
+     * Live subscription. cb(items) is invoked on every snapshot, including
+     * the first one. Returns an unsubscribe function.
+     */
+    subscribeAll: function (cb) {
+      if (typeof cb !== 'function') return function () {};
+      subscribers.push(cb);
+      // Fire immediately if we already have data
+      if (hasFirstSnapshot) {
+        try { cb(CACHE.slice()); } catch (e) { /* swallow */ }
+      }
+      return function unsubscribe() {
+        var i = subscribers.indexOf(cb);
+        if (i >= 0) subscribers.splice(i, 1);
+      };
     }
   };
 

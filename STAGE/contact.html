@@ -58,19 +58,19 @@
           <dl>
             <div>
               <dt>Email</dt>
-              <dd><a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a></dd>
+              <dd><a data-content="displayEmail" href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a></dd>
             </div>
             <div>
               <dt>Phone</dt>
-              <dd><a href="tel:+14156011715">(415) 601-1715</a></dd>
+              <dd><a data-content="phone" href="tel:+14156011715">(415) 601-1715</a></dd>
             </div>
             <div>
               <dt>Brokerage</dt>
-              <dd><a href="https://marinsfinest.com" target="_blank" rel="noopener">Marin’s Finest</a></dd>
+              <dd><a data-content="brokerage" href="https://marinsfinest.com" target="_blank" rel="noopener">Marin’s Finest</a></dd>
             </div>
             <div>
               <dt>License</dt>
-              <dd>DRE #01256719</dd>
+              <dd data-content="license">DRE #01256719</dd>
             </div>
           </dl>
         </aside>
@@ -164,8 +164,15 @@
   </div>
 </footer>
 
+<script type="module" src="assets/js/firebase-init.js"></script>
 <script src="assets/js/site.js"></script>
+<script src="assets/js/site-content.js"></script>
 <script src="assets/js/contact.js"></script>
+<script>
+  (function () {
+    MB.content && MB.content.applyContact && MB.content.applyContact();
+  })();
+</script>
 
 </body>
 </html>

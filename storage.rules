@@ -1,0 +1,23 @@
+// Marie Borders — Cloud Storage security rules
+//
+// Default-deny. Public read on listing photos + site assets so the public
+// site can render images. Writes require an authenticated user (Marie).
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthed() { return request.auth != null; }
+
+    match /listing-photos/{listingId}/{file} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+    match /site/{file} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
