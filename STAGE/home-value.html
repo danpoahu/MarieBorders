@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<!--
+  STAGE — Phase C (What's Your Marin Home Worth?).
+  TODO before cutover: remove <meta name="robots" content="noindex">.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>What's Your Marin Home Worth? | Marie Borders</title>
+<meta name="description" content="Get a thoughtful Marin home valuation from Marie Borders — based on real comparable sales and local knowledge, not an algorithm. Personal reply within one business day.">
+<meta property="og:title" content="What's Your Marin Home Worth? | Marie Borders">
+<meta property="og:description" content="Get a thoughtful Marin home valuation from Marie Borders — based on real comparable sales and local knowledge.">
+<meta property="og:image" content="assets/images/hero.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://marieborders.com/STAGE/home-value.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  .hv-section { padding: var(--s8) 0; }
+  .hv-wrap { max-width: 720px; margin: 0 auto; padding: 0 var(--s5); }
+
+  .hv-intro {
+    text-align: center;
+    margin-bottom: var(--s6);
+  }
+  .hv-intro__eyebrow {
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: var(--s2);
+  }
+  .hv-intro__lede {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .hv-card {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s7);
+    box-shadow: 0 4px 20px rgba(26, 31, 36, 0.04);
+  }
+
+  .hv-section-title {
+    font-family: var(--font-serif);
+    font-size: 1.3rem;
+    color: var(--ink);
+    margin-bottom: var(--s3);
+    margin-top: var(--s5);
+  }
+  .hv-section-title:first-of-type { margin-top: 0; }
+
+  .hv-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s4);
+  }
+  .hv-row--3 { grid-template-columns: 2fr 1fr 1fr; }
+  @media (max-width: 600px) {
+    .hv-row, .hv-row--3 { grid-template-columns: 1fr; }
+  }
+
+  .hv-pillrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s3);
+  }
+  .hv-pill {
+    flex: 1 1 auto;
+    background: #fff;
+    border: 1.5px solid var(--hush);
+    border-radius: 100px;
+    padding: var(--s3) var(--s4);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.92rem;
+    color: var(--ink);
+    text-align: center;
+    min-width: 0;
+  }
+  .hv-pill:hover { border-color: var(--accent); }
+  .hv-pill input { position: absolute; opacity: 0; pointer-events: none; }
+  .hv-pill.is-selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .hv-promise {
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    padding: var(--s5);
+    margin-top: var(--s6);
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+  }
+  .hv-promise strong { color: var(--ink); font-family: var(--font-serif); font-size: 1.1rem; display: block; margin-bottom: var(--s2); }
+
+  .hv-success {
+    text-align: center;
+    padding: var(--s7) var(--s5);
+  }
+  .hv-success__icon {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: rgba(168, 133, 76, 0.12);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto var(--s5);
+  }
+  .hv-success__icon svg { width: 36px; height: 36px; }
+  .hv-success h2 { font-size: 2.2rem; margin-bottom: var(--s4); }
+
+  .hv-error {
+    color: #7a3134;
+    background: rgba(122, 49, 52, 0.06);
+    border: 1px solid rgba(122, 49, 52, 0.2);
+    border-radius: var(--radius);
+    padding: var(--s3) var(--s4);
+    margin-top: var(--s4);
+    font-size: 0.95rem;
+    display: none;
+  }
+  .hv-error.is-visible { display: block; }
+
+  .hv-submit-row {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--s6);
+  }
+  .hv-submit-row .btn { padding: var(--s4) var(--s7); font-size: 1rem; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="brand" href="index.html">Marie Borders</a>
+    <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="primary-nav">
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <nav class="nav" id="primary-nav" aria-label="Primary">
+      <a class="nav__link" href="index.html">Home</a>
+      <a class="nav__link" href="about.html">About</a>
+      <a class="nav__link" href="for-sale.html">For Sale</a>
+      <a class="nav__link" href="wish-list.html">Wish List</a>
+      <a class="nav__link" href="home-value.html">Home Value</a>
+      <a class="nav__link" href="guides.html">Guides</a>
+      <a class="nav__link" href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero hero--small">
+    <div class="hero__inner">
+      <h1>What's Your Marin Home Worth?</h1>
+      <p class="hero__tagline">A real valuation, by a real agent &mdash; not an algorithm.</p>
+    </div>
+  </section>
+
+  <section class="hv-section">
+    <div class="hv-wrap">
+
+      <div class="hv-intro">
+        <div class="hv-intro__eyebrow">Personal Valuation</div>
+        <p class="hv-intro__lede">
+          Online estimators look at averages. I'll look at <em>your</em> home &mdash; recent comparable sales on your block,
+          current active inventory, the specific features that make Marin homes feel different from the data points.
+          Tell me about the property and I'll put together a thoughtful valuation within a business day.
+        </p>
+      </div>
+
+      <form id="hv-form" class="hv-card" novalidate>
+
+        <h2 class="hv-section-title">The property</h2>
+
+        <div class="field">
+          <label for="hv-street">Street address <span class="req" aria-hidden="true">*</span></label>
+          <input type="text" id="hv-street" autocomplete="street-address" required aria-required="true" placeholder="e.g., 127 Lovell Avenue">
+        </div>
+
+        <div class="hv-row--3">
+          <div class="field">
+            <label for="hv-city">City</label>
+            <input type="text" id="hv-city" autocomplete="address-level2" placeholder="Mill Valley">
+          </div>
+          <div class="field">
+            <label for="hv-state">State</label>
+            <input type="text" id="hv-state" autocomplete="address-level1" value="CA" maxlength="2">
+          </div>
+          <div class="field">
+            <label for="hv-zip">Zip</label>
+            <input type="text" id="hv-zip" autocomplete="postal-code" maxlength="10">
+          </div>
+        </div>
+
+        <h2 class="hv-section-title">A little about the home</h2>
+        <p style="color:var(--ink-muted);font-size:0.9rem;margin-bottom:var(--s4);">All optional &mdash; I can look these up, but it speeds things up if you fill them in.</p>
+
+        <div class="hv-row--3">
+          <div class="field">
+            <label for="hv-beds">Beds</label>
+            <input type="number" id="hv-beds" min="0" max="20">
+          </div>
+          <div class="field">
+            <label for="hv-baths">Baths</label>
+            <input type="number" id="hv-baths" min="0" max="20" step="0.5">
+          </div>
+          <div class="field">
+            <label for="hv-sqft">Sq Ft</label>
+            <input type="number" id="hv-sqft" min="0">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="hv-yearBuilt">Year built</label>
+          <input type="number" id="hv-yearBuilt" min="1800" max="2100">
+        </div>
+
+        <h2 class="hv-section-title">Current condition</h2>
+        <div class="hv-pillrow" id="hv-condition" role="radiogroup" aria-label="Condition">
+          <label class="hv-pill"><input type="radio" name="condition" value="excellent">Excellent &mdash; move-in ready</label>
+          <label class="hv-pill"><input type="radio" name="condition" value="good">Good &mdash; minor updates</label>
+          <label class="hv-pill"><input type="radio" name="condition" value="fair">Fair &mdash; some work</label>
+          <label class="hv-pill"><input type="radio" name="condition" value="needs-work">Needs work</label>
+        </div>
+
+        <h2 class="hv-section-title">Timing</h2>
+        <div class="hv-pillrow" id="hv-timeline" role="radiogroup" aria-label="Timeline">
+          <label class="hv-pill"><input type="radio" name="timeline" value="0-3mo">Within 3 months</label>
+          <label class="hv-pill"><input type="radio" name="timeline" value="3-6mo">3 to 6 months</label>
+          <label class="hv-pill"><input type="radio" name="timeline" value="6-12mo">6 to 12 months</label>
+          <label class="hv-pill"><input type="radio" name="timeline" value="12+mo">A year+ out</label>
+          <label class="hv-pill"><input type="radio" name="timeline" value="just-curious">Just curious</label>
+        </div>
+
+        <h2 class="hv-section-title">Anything special about the home?</h2>
+        <div class="field">
+          <textarea id="hv-notes" rows="4" placeholder="Recent renovations, special view, unique lot, plans you have for the property &mdash; anything that an algorithm would miss."></textarea>
+        </div>
+
+        <h2 class="hv-section-title">How can Marie reach you?</h2>
+
+        <div class="hv-row">
+          <div class="field">
+            <label for="hv-name">Name <span class="req" aria-hidden="true">*</span></label>
+            <input type="text" id="hv-name" autocomplete="name" required aria-required="true">
+          </div>
+          <div class="field">
+            <label for="hv-email">Email <span class="req" aria-hidden="true">*</span></label>
+            <input type="email" id="hv-email" autocomplete="email" required aria-required="true">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="hv-phone">Phone <span style="color:var(--ink-muted);text-transform:none;letter-spacing:0;font-size:0.78rem;">(optional)</span></label>
+          <input type="tel" id="hv-phone" autocomplete="tel">
+        </div>
+
+        <div id="hv-error" class="hv-error" role="alert"></div>
+
+        <div class="hv-submit-row">
+          <button type="submit" class="btn" id="hv-submit-btn">Send My Request</button>
+        </div>
+
+        <div class="hv-promise">
+          <strong>Marie's promise</strong>
+          Your information stays confidential. No mailing lists, no auto-drip campaigns &mdash; just a thoughtful reply from Marie within one business day.
+        </div>
+      </form>
+
+      <!-- Success -->
+      <div id="hv-success" class="hv-success" style="display:none;" tabindex="-1">
+        <div class="hv-success__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12l5 5L20 7"/>
+          </svg>
+        </div>
+        <h2>Thank you, <span id="hv-success-name">friend</span>.</h2>
+        <p>Your home valuation request is on its way to Marie. She'll pull recent comps and put together a thoughtful response within a business day.</p>
+        <p style="margin-top:var(--s5);">A confirmation has been sent to your inbox. Check spam if it doesn't arrive within a few minutes.</p>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__cols">
+      <div>
+        <h4>Contact</h4>
+        <p><a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a></p>
+        <p><a href="tel:+14156011715">(415) 601-1715</a></p>
+        <p>DRE #01256719</p>
+      </div>
+      <div>
+        <h4>About</h4>
+        <p>Marie Borders is a Marin County native and licensed real estate agent representing buyers and sellers across the North Bay.</p>
+      </div>
+      <div>
+        <h4>Brokerage</h4>
+        <p><a href="https://marinsfinest.com" target="_blank" rel="noopener">Marin&rsquo;s Finest</a></p>
+        <p>Real Estate Associate | Team Leader</p>
+      </div>
+    </div>
+    <div class="site-footer__strip">
+      <span>&copy; <span data-year>2026</span> Marie Borders. Real Estate Associate, DRE #01256719. All rights reserved.</span>
+      <span class="eho">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+        Equal Housing Opportunity
+      </span>
+      <span>Hero photo by <a href="https://unsplash.com/@jaredlisack" target="_blank" rel="noopener">Jared Lisack</a> on <a href="https://unsplash.com/" target="_blank" rel="noopener">Unsplash</a></span>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="assets/js/firebase-init.js"></script>
+<script src="assets/js/site.js"></script>
+<script src="assets/js/home-value.js"></script>
+
+</body>
+</html>

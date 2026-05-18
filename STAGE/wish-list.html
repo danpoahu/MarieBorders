@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<!--
+  STAGE — Phase B (Build Your Marin Wish List).
+  TODO before cutover: remove <meta name="robots" content="noindex">.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Build Your Marin Wish List | Marie Borders</title>
+<meta name="description" content="Tell Marie about the home you're looking for. Five short questions — neighborhoods, must-haves, timeline. She'll review personally and reach out within a business day.">
+<meta property="og:title" content="Build Your Marin Wish List | Marie Borders">
+<meta property="og:description" content="Tell Marie about the home you're looking for. She'll review personally and reach out within a business day.">
+<meta property="og:image" content="assets/images/hero.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://marieborders.com/STAGE/wish-list.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* ---- Wish List specific ---- */
+  .wl-section { padding: var(--s8) 0; }
+  .wl-wrap { max-width: 760px; margin: 0 auto; padding: 0 var(--s5); }
+
+  .wl-progress {
+    display: flex;
+    justify-content: center;
+    gap: var(--s2);
+    margin-bottom: var(--s6);
+  }
+  .wl-progress__dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1.5px solid var(--hush);
+    color: var(--ink-muted);
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .wl-progress__dot.is-active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .wl-progress__dot.is-complete {
+    background: var(--accent-deep);
+    color: #fff;
+    border-color: var(--accent-deep);
+  }
+
+  .wl-step { display: none; }
+  .wl-step.is-active { display: block; }
+
+  .wl-step__header {
+    text-align: center;
+    margin-bottom: var(--s6);
+  }
+  .wl-step__eyebrow {
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: var(--s2);
+  }
+  .wl-step__title {
+    font-family: var(--font-serif);
+    font-size: clamp(2rem, 4vw, 2.6rem);
+    color: var(--ink);
+    margin-bottom: var(--s3);
+  }
+  .wl-step__lede {
+    font-size: 1.05rem;
+    color: var(--ink-soft);
+    max-width: 540px;
+    margin: 0 auto;
+  }
+
+  .wl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: var(--s3);
+  }
+  .wl-tile {
+    background: #fff;
+    border: 1.5px solid var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s4);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.95rem;
+    color: var(--ink);
+    text-align: center;
+    position: relative;
+    line-height: 1.3;
+  }
+  .wl-tile:hover { border-color: var(--accent); }
+  .wl-tile input { position: absolute; opacity: 0; pointer-events: none; }
+  .wl-tile.is-selected {
+    border-color: var(--accent);
+    background: rgba(168, 133, 76, 0.08);
+    color: var(--accent-deep);
+    font-weight: 500;
+  }
+  .wl-tile.is-selected::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .wl-tile.is-selected::after {
+    content: '';
+    position: absolute;
+    top: 11px;
+    right: 11px;
+    width: 6px;
+    height: 10px;
+    border-right: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(45deg);
+  }
+
+  .wl-pillrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s3);
+    justify-content: center;
+    margin-bottom: var(--s4);
+  }
+  .wl-pill {
+    background: #fff;
+    border: 1.5px solid var(--hush);
+    border-radius: 100px;
+    padding: var(--s3) var(--s5);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.95rem;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+  .wl-pill:hover { border-color: var(--accent); }
+  .wl-pill input { position: absolute; opacity: 0; pointer-events: none; }
+  .wl-pill.is-selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .wl-fieldlabel {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: var(--s2);
+    font-weight: 500;
+  }
+
+  .wl-section-title {
+    font-family: var(--font-serif);
+    font-size: 1.4rem;
+    color: var(--ink);
+    margin-bottom: var(--s2);
+    margin-top: var(--s6);
+  }
+  .wl-section-title:first-child { margin-top: 0; }
+  .wl-section-lede {
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    margin-bottom: var(--s4);
+  }
+
+  .wl-budget-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s4);
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .wl-budget-row .field { margin: 0; }
+
+  .wl-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s4);
+    margin-top: var(--s7);
+    padding-top: var(--s5);
+    border-top: 1px solid var(--hush);
+    flex-wrap: wrap;
+  }
+  .wl-actions__left, .wl-actions__right { display: flex; gap: var(--s3); }
+
+  .btn--ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    border-color: var(--hush);
+  }
+  .btn--ghost:hover, .btn--ghost:focus {
+    background: var(--paper-deep);
+    color: var(--ink);
+    border-color: var(--ink-muted);
+  }
+
+  .wl-other {
+    margin-top: var(--s4);
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .wl-success {
+    text-align: center;
+    padding: var(--s7) var(--s5);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .wl-success__icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(168, 133, 76, 0.12);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto var(--s5);
+  }
+  .wl-success__icon svg { width: 36px; height: 36px; }
+  .wl-success h2 { font-size: 2.2rem; margin-bottom: var(--s4); }
+
+  .wl-error {
+    color: #7a3134;
+    background: rgba(122, 49, 52, 0.06);
+    border: 1px solid rgba(122, 49, 52, 0.2);
+    border-radius: var(--radius);
+    padding: var(--s3) var(--s4);
+    margin-top: var(--s4);
+    font-size: 0.95rem;
+    display: none;
+  }
+  .wl-error.is-visible { display: block; }
+
+  @media (max-width: 600px) {
+    .wl-budget-row { grid-template-columns: 1fr; }
+    .wl-progress__dot { width: 32px; height: 32px; font-size: 0.9rem; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="brand" href="index.html">Marie Borders</a>
+    <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="primary-nav">
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <nav class="nav" id="primary-nav" aria-label="Primary">
+      <a class="nav__link" href="index.html">Home</a>
+      <a class="nav__link" href="about.html">About</a>
+      <a class="nav__link" href="for-sale.html">For Sale</a>
+      <a class="nav__link" href="wish-list.html">Wish List</a>
+      <a class="nav__link" href="home-value.html">Home Value</a>
+      <a class="nav__link" href="guides.html">Guides</a>
+      <a class="nav__link" href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero hero--small">
+    <div class="hero__inner">
+      <h1>Build Your Marin Wish List</h1>
+      <p class="hero__tagline">Five short questions. A real conversation, in writing.</p>
+    </div>
+  </section>
+
+  <section class="wl-section">
+    <div class="wl-wrap">
+
+      <!-- Progress indicator -->
+      <div class="wl-progress" role="progressbar" aria-valuemin="1" aria-valuemax="5" aria-valuenow="1" id="wl-progress">
+        <div class="wl-progress__dot is-active" data-step="1">1</div>
+        <div class="wl-progress__dot" data-step="2">2</div>
+        <div class="wl-progress__dot" data-step="3">3</div>
+        <div class="wl-progress__dot" data-step="4">4</div>
+        <div class="wl-progress__dot" data-step="5">5</div>
+      </div>
+
+      <form id="wl-form" novalidate>
+
+        <!-- ============ STEP 1: WHERE ============ -->
+        <section class="wl-step is-active" data-step="1">
+          <header class="wl-step__header">
+            <div class="wl-step__eyebrow">Where</div>
+            <h2 class="wl-step__title">Which corners of Marin call to you?</h2>
+            <p class="wl-step__lede">Pick as many as you like. There's no wrong answer — some clients are decided, others are still exploring.</p>
+          </header>
+
+          <div class="wl-grid" id="wl-neighborhoods" role="group" aria-label="Marin neighborhoods">
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Mill Valley">Mill Valley</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Tiburon">Tiburon</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Belvedere">Belvedere</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Sausalito">Sausalito</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="San Anselmo">San Anselmo</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Ross">Ross</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Kentfield">Kentfield</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Greenbrae">Greenbrae</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Larkspur">Larkspur</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Corte Madera">Corte Madera</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Fairfax">Fairfax</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="San Rafael">San Rafael</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Novato">Novato</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="West Marin">West Marin (Pt Reyes / Bolinas / Inverness)</label>
+            <label class="wl-tile"><input type="checkbox" name="neighborhoods" value="Open to suggestions">Open to suggestions</label>
+          </div>
+
+          <div class="wl-other">
+            <label for="wl-neighborhoods-other" class="wl-fieldlabel">Anywhere else in mind?</label>
+            <input type="text" id="wl-neighborhoods-other" placeholder="A street, a school zone, a specific block…">
+          </div>
+        </section>
+
+        <!-- ============ STEP 2: WHAT ============ -->
+        <section class="wl-step" data-step="2">
+          <header class="wl-step__header">
+            <div class="wl-step__eyebrow">What</div>
+            <h2 class="wl-step__title">The shape of the home.</h2>
+            <p class="wl-step__lede">Rough numbers are perfect — these are starting points, not strict requirements.</p>
+          </header>
+
+          <h3 class="wl-section-title">Minimum bedrooms</h3>
+          <div class="wl-pillrow" id="wl-bedsMin" role="radiogroup" aria-label="Minimum bedrooms">
+            <label class="wl-pill"><input type="radio" name="bedsMin" value="1">1+</label>
+            <label class="wl-pill"><input type="radio" name="bedsMin" value="2">2+</label>
+            <label class="wl-pill"><input type="radio" name="bedsMin" value="3">3+</label>
+            <label class="wl-pill"><input type="radio" name="bedsMin" value="4">4+</label>
+            <label class="wl-pill"><input type="radio" name="bedsMin" value="5">5+</label>
+            <label class="wl-pill"><input type="radio" name="bedsMin" value="">No preference</label>
+          </div>
+
+          <h3 class="wl-section-title">Minimum bathrooms</h3>
+          <div class="wl-pillrow" id="wl-bathsMin" role="radiogroup" aria-label="Minimum bathrooms">
+            <label class="wl-pill"><input type="radio" name="bathsMin" value="1">1+</label>
+            <label class="wl-pill"><input type="radio" name="bathsMin" value="1.5">1.5+</label>
+            <label class="wl-pill"><input type="radio" name="bathsMin" value="2">2+</label>
+            <label class="wl-pill"><input type="radio" name="bathsMin" value="2.5">2.5+</label>
+            <label class="wl-pill"><input type="radio" name="bathsMin" value="3">3+</label>
+            <label class="wl-pill"><input type="radio" name="bathsMin" value="">No preference</label>
+          </div>
+
+          <h3 class="wl-section-title">Budget range</h3>
+          <p class="wl-section-lede" style="text-align:center;">Round numbers are fine. You can adjust later.</p>
+          <div class="wl-budget-row">
+            <div class="field">
+              <label for="wl-budgetMin" class="wl-fieldlabel">Minimum</label>
+              <input type="text" id="wl-budgetMin" inputmode="numeric" placeholder="$1,500,000">
+            </div>
+            <div class="field">
+              <label for="wl-budgetMax" class="wl-fieldlabel">Maximum</label>
+              <input type="text" id="wl-budgetMax" inputmode="numeric" placeholder="$2,500,000">
+            </div>
+          </div>
+        </section>
+
+        <!-- ============ STEP 3: MUST + NICE ============ -->
+        <section class="wl-step" data-step="3">
+          <header class="wl-step__header">
+            <div class="wl-step__eyebrow">Priorities</div>
+            <h2 class="wl-step__title">Must-haves and nice-to-haves.</h2>
+            <p class="wl-step__lede">First the deal-breakers, then the cherries on top. Skip anything you don't care about.</p>
+          </header>
+
+          <h3 class="wl-section-title">Must-haves</h3>
+          <p class="wl-section-lede">If a home doesn't have these, it's not the one.</p>
+          <div class="wl-grid" id="wl-mustHaves" role="group" aria-label="Must haves">
+            <label class="wl-tile"><input type="checkbox" name="mustHaves" value="Primary suite on main floor">Primary suite on main floor</label>
+            <label class="wl-tile"><input type="checkbox" name="mustHaves" value="Home office or den">Home office or den</label>
+            <label class="wl-tile"><input type="checkbox" name="mustHaves" value="Garage (2+ car)">2+ car garage</label>
+            <label class="wl-tile"><input type="checkbox" name="mustHaves" value="Level entry">Level entry</label>
+            <label class="wl-tile"><input type="checkbox" name="mustHaves" value="Outdoor space / yard">Outdoor space / yard</label>
+            <label class="wl-tile"><input type="checkbox" name="mustHaves" value="Walk to downtown">Walk to downtown</label>
+            <label class="wl-tile"><input type="checkbox" name="mustHaves" value="Specific school zone">Specific school zone</label>
+            <label class="wl-tile"><input type="checkbox" name="mustHaves" value="Move-in ready">Move-in ready</label>
+            <label class="wl-tile"><input type="checkbox" name="mustHaves" value="Quiet street">Quiet street</label>
+          </div>
+
+          <div class="wl-other">
+            <label for="wl-mustHaves-other" class="wl-fieldlabel">Other must-haves?</label>
+            <input type="text" id="wl-mustHaves-other" placeholder="e.g., flat lot, accessible bath, garden">
+          </div>
+
+          <h3 class="wl-section-title">Nice-to-haves</h3>
+          <p class="wl-section-lede">Lovely if we find them, won't break the deal if we don't.</p>
+          <div class="wl-grid" id="wl-niceToHaves" role="group" aria-label="Nice to haves">
+            <label class="wl-tile"><input type="checkbox" name="niceToHaves" value="Bay or ocean view">Bay or ocean view</label>
+            <label class="wl-tile"><input type="checkbox" name="niceToHaves" value="Detached ADU / in-law unit">ADU / in-law unit</label>
+            <label class="wl-tile"><input type="checkbox" name="niceToHaves" value="Pool or hot tub">Pool or hot tub</label>
+            <label class="wl-tile"><input type="checkbox" name="niceToHaves" value="Solar / EV charger">Solar / EV charger</label>
+            <label class="wl-tile"><input type="checkbox" name="niceToHaves" value="Wood-burning fireplace">Wood-burning fireplace</label>
+            <label class="wl-tile"><input type="checkbox" name="niceToHaves" value="Workshop or studio">Workshop / studio</label>
+            <label class="wl-tile"><input type="checkbox" name="niceToHaves" value="Walk to ferry">Walk to ferry</label>
+            <label class="wl-tile"><input type="checkbox" name="niceToHaves" value="Open floor plan">Open floor plan</label>
+            <label class="wl-tile"><input type="checkbox" name="niceToHaves" value="Mature trees">Mature trees</label>
+          </div>
+
+          <div class="wl-other">
+            <label for="wl-niceToHaves-other" class="wl-fieldlabel">Other nice-to-haves?</label>
+            <input type="text" id="wl-niceToHaves-other" placeholder="e.g., wine room, deep tub, dog run">
+          </div>
+        </section>
+
+        <!-- ============ STEP 4: WHEN ============ -->
+        <section class="wl-step" data-step="4">
+          <header class="wl-step__header">
+            <div class="wl-step__eyebrow">Timing</div>
+            <h2 class="wl-step__title">When are you hoping to move?</h2>
+            <p class="wl-step__lede">Knowing the timeline helps Marie know how aggressively to look on your behalf.</p>
+          </header>
+
+          <div class="wl-pillrow" id="wl-timeline" role="radiogroup" aria-label="Timeline">
+            <label class="wl-pill"><input type="radio" name="timeline" value="0-3mo">Within 3 months</label>
+            <label class="wl-pill"><input type="radio" name="timeline" value="3-6mo">3 to 6 months</label>
+            <label class="wl-pill"><input type="radio" name="timeline" value="6-12mo">6 to 12 months</label>
+            <label class="wl-pill"><input type="radio" name="timeline" value="12+mo">A year or more out</label>
+            <label class="wl-pill"><input type="radio" name="timeline" value="just-looking">Just exploring for now</label>
+          </div>
+
+          <h3 class="wl-section-title">A little about your household</h3>
+          <p class="wl-section-lede">Optional. It helps Marie picture how a home would actually live for you.</p>
+
+          <div class="wl-budget-row">
+            <div class="field">
+              <label for="wl-householdSize" class="wl-fieldlabel">Household size</label>
+              <input type="number" id="wl-householdSize" min="1" max="20" placeholder="e.g., 4">
+            </div>
+            <div class="field">
+              <label for="wl-schoolDistrict" class="wl-fieldlabel">School zone preference</label>
+              <input type="text" id="wl-schoolDistrict" placeholder="e.g., Tam Union, Reed">
+            </div>
+          </div>
+
+          <div class="wl-pillrow" style="margin-top:var(--s5);">
+            <label class="wl-pill"><input type="checkbox" id="wl-kidsAtHome">Kids at home</label>
+            <label class="wl-pill"><input type="checkbox" id="wl-petsAtHome">Pets in the family</label>
+          </div>
+        </section>
+
+        <!-- ============ STEP 5: CONTACT ============ -->
+        <section class="wl-step" data-step="5">
+          <header class="wl-step__header">
+            <div class="wl-step__eyebrow">Send it</div>
+            <h2 class="wl-step__title">How can Marie reach you?</h2>
+            <p class="wl-step__lede">You'll get a personal reply within one business day — often much sooner.</p>
+          </header>
+
+          <div class="form" style="max-width:520px;margin:0 auto;">
+            <div class="field">
+              <label for="wl-name">Your name <span class="req" aria-hidden="true">*</span></label>
+              <input type="text" id="wl-name" autocomplete="name" required aria-required="true">
+            </div>
+            <div class="field">
+              <label for="wl-email">Email <span class="req" aria-hidden="true">*</span></label>
+              <input type="email" id="wl-email" autocomplete="email" required aria-required="true">
+            </div>
+            <div class="field">
+              <label for="wl-phone">Phone <span style="color:var(--ink-muted);text-transform:none;letter-spacing:0;font-size:0.78rem;">(optional)</span></label>
+              <input type="tel" id="wl-phone" autocomplete="tel">
+            </div>
+            <div class="field">
+              <label for="wl-notes">Anything else Marie should know?</label>
+              <textarea id="wl-notes" rows="4" placeholder="Family situation, lifestyle, what's driving the move, anything that makes the right home feel like home."></textarea>
+            </div>
+            <div id="wl-error" class="wl-error" role="alert"></div>
+          </div>
+        </section>
+
+        <!-- ============ ACTION BAR ============ -->
+        <div class="wl-actions" id="wl-actions">
+          <div class="wl-actions__left">
+            <button type="button" class="btn btn--ghost" id="wl-back-btn" style="visibility:hidden;">Back</button>
+          </div>
+          <div class="wl-actions__right">
+            <button type="button" class="btn" id="wl-continue-btn">Continue</button>
+            <button type="button" class="btn" id="wl-submit-btn" style="display:none;">Send Wish List</button>
+          </div>
+        </div>
+
+      </form>
+
+      <!-- ============ SUCCESS ============ -->
+      <div id="wl-success" class="wl-success" style="display:none;" tabindex="-1">
+        <div class="wl-success__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12l5 5L20 7"/>
+          </svg>
+        </div>
+        <h2>Thank you, <span id="wl-success-name">friend</span>.</h2>
+        <p>Your Marin wish list is on its way to Marie. She reads each one personally and will be in touch within one business day — often much sooner.</p>
+        <p style="margin-top:var(--s5);">A confirmation has been sent to your inbox. Check spam if it doesn't arrive within a few minutes.</p>
+        <p style="margin-top:var(--s6);">
+          <a class="btn btn--ghost" href="for-sale.html">Browse current listings</a>
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__cols">
+      <div>
+        <h4>Contact</h4>
+        <p><a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a></p>
+        <p><a href="tel:+14156011715">(415) 601-1715</a></p>
+        <p>DRE #01256719</p>
+      </div>
+      <div>
+        <h4>About</h4>
+        <p>Marie Borders is a Marin County native and licensed real estate agent representing buyers and sellers across the North Bay.</p>
+      </div>
+      <div>
+        <h4>Brokerage</h4>
+        <p><a href="https://marinsfinest.com" target="_blank" rel="noopener">Marin&rsquo;s Finest</a></p>
+        <p>Real Estate Associate | Team Leader</p>
+      </div>
+    </div>
+    <div class="site-footer__strip">
+      <span>&copy; <span data-year>2026</span> Marie Borders. Real Estate Associate, DRE #01256719. All rights reserved.</span>
+      <span class="eho">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+        Equal Housing Opportunity
+      </span>
+      <span>Hero photo by <a href="https://unsplash.com/@jaredlisack" target="_blank" rel="noopener">Jared Lisack</a> on <a href="https://unsplash.com/" target="_blank" rel="noopener">Unsplash</a></span>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="assets/js/firebase-init.js"></script>
+<script src="assets/js/site.js"></script>
+<script src="assets/js/wish-list.js"></script>
+
+</body>
+</html>

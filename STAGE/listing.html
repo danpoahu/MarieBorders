@@ -18,6 +18,132 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/site.css">
+<style>
+  /* ---- Open House RSVP styles ---- */
+  .oh-rsvp-btn {
+    margin-left: var(--s4);
+    padding: 0.4rem 1rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--accent-deep);
+    border: 1.5px solid var(--accent);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: var(--font-sans);
+  }
+  .oh-rsvp-btn:hover { background: var(--accent); color: #fff; }
+  .open-houses li {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--s2);
+  }
+
+  .rsvp-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15, 20, 28, 0.55);
+    z-index: 300;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s4);
+  }
+  .rsvp-backdrop.is-open { display: flex; }
+  .rsvp-modal {
+    background: #fff;
+    border-radius: var(--radius);
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: var(--s7);
+    position: relative;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  }
+  .rsvp-close {
+    position: absolute;
+    top: var(--s4);
+    right: var(--s4);
+    background: transparent;
+    border: 0;
+    font-size: 1.6rem;
+    color: var(--ink-muted);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .rsvp-close:hover { color: var(--ink); }
+  .rsvp-modal h2 { font-size: 1.8rem; margin-bottom: var(--s2); }
+  .rsvp-context {
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    padding: var(--s3) var(--s4);
+    margin-bottom: var(--s5);
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+  }
+  .rsvp-context strong { color: var(--ink); }
+
+  .rsvp-pillrow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+    margin-bottom: var(--s4);
+  }
+  .rsvp-pill {
+    background: #fff;
+    border: 1.5px solid var(--hush);
+    border-radius: 100px;
+    padding: var(--s2) var(--s4);
+    cursor: pointer;
+    font-size: 0.88rem;
+    color: var(--ink);
+    transition: all 0.15s;
+  }
+  .rsvp-pill:hover { border-color: var(--accent); }
+  .rsvp-pill input { position: absolute; opacity: 0; pointer-events: none; }
+  .rsvp-pill.is-selected {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .rsvp-error {
+    color: #7a3134;
+    background: rgba(122, 49, 52, 0.06);
+    border: 1px solid rgba(122, 49, 52, 0.2);
+    border-radius: var(--radius);
+    padding: var(--s3) var(--s4);
+    margin-top: var(--s3);
+    font-size: 0.9rem;
+    display: none;
+  }
+  .rsvp-error.is-visible { display: block; }
+
+  .rsvp-actions {
+    display: flex;
+    gap: var(--s3);
+    justify-content: flex-end;
+    margin-top: var(--s5);
+  }
+
+  .rsvp-success {
+    text-align: center;
+    padding: var(--s4) 0;
+  }
+  .rsvp-success__icon {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: rgba(168, 133, 76, 0.12);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto var(--s4);
+  }
+  .rsvp-success__icon svg { width: 28px; height: 28px; }
+  .rsvp-success h2 { font-size: 1.6rem; margin-bottom: var(--s3); }
+</style>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -34,6 +160,9 @@
       <a class="nav__link" href="index.html">Home</a>
       <a class="nav__link" href="about.html">About</a>
       <a class="nav__link" href="for-sale.html">For Sale</a>
+      <a class="nav__link" href="wish-list.html">Wish List</a>
+      <a class="nav__link" href="home-value.html">Home Value</a>
+      <a class="nav__link" href="guides.html">Guides</a>
       <a class="nav__link" href="contact.html">Contact</a>
     </nav>
   </div>
@@ -138,10 +267,80 @@
   </div>
 </footer>
 
+<!-- ============ OPEN HOUSE RSVP MODAL ============ -->
+<div class="rsvp-backdrop" id="rsvp-backdrop" role="dialog" aria-modal="true" aria-labelledby="rsvp-title" aria-hidden="true">
+  <div class="rsvp-modal">
+    <button type="button" class="rsvp-close" id="rsvp-close-btn" aria-label="Close">&times;</button>
+
+    <div id="rsvp-form-wrap">
+      <h2 id="rsvp-title">RSVP for the Open House</h2>
+      <div class="rsvp-context" id="rsvp-context"></div>
+
+      <form id="rsvp-form" novalidate>
+        <div class="field">
+          <label for="rsvp-name">Name <span class="req" aria-hidden="true">*</span></label>
+          <input type="text" id="rsvp-name" autocomplete="name" required aria-required="true">
+        </div>
+        <div class="field">
+          <label for="rsvp-email">Email <span class="req" aria-hidden="true">*</span></label>
+          <input type="email" id="rsvp-email" autocomplete="email" required aria-required="true">
+        </div>
+        <div class="field">
+          <label for="rsvp-phone">Phone <span style="color:var(--ink-muted);text-transform:none;letter-spacing:0;font-size:0.78rem;">(optional)</span></label>
+          <input type="tel" id="rsvp-phone" autocomplete="tel">
+        </div>
+        <div class="field">
+          <label for="rsvp-guests">How many in your party?</label>
+          <input type="number" id="rsvp-guests" min="1" max="20" value="1">
+        </div>
+
+        <p style="margin-top:var(--s4);margin-bottom:var(--s2);color:var(--ink-soft);font-size:0.88rem;">Are you currently working with an agent?</p>
+        <div class="rsvp-pillrow" id="rsvp-workingWithAgent" role="radiogroup" aria-label="Working with an agent">
+          <label class="rsvp-pill"><input type="radio" name="workingWithAgent" value="yes">Yes</label>
+          <label class="rsvp-pill"><input type="radio" name="workingWithAgent" value="no">No</label>
+        </div>
+
+        <p style="margin-bottom:var(--s2);color:var(--ink-soft);font-size:0.88rem;">Pre-approved for financing?</p>
+        <div class="rsvp-pillrow" id="rsvp-preApproved" role="radiogroup" aria-label="Pre-approved for financing">
+          <label class="rsvp-pill"><input type="radio" name="preApproved" value="yes">Yes</label>
+          <label class="rsvp-pill"><input type="radio" name="preApproved" value="no">No</label>
+          <label class="rsvp-pill"><input type="radio" name="preApproved" value="n-a">N/A &mdash; cash buyer</label>
+        </div>
+
+        <div class="field">
+          <label for="rsvp-notes">Anything Marie should know?</label>
+          <textarea id="rsvp-notes" rows="3" placeholder="Questions, accessibility needs, special interests in the property…"></textarea>
+        </div>
+
+        <div id="rsvp-error" class="rsvp-error" role="alert"></div>
+
+        <div class="rsvp-actions">
+          <button type="button" class="btn btn--ghost" id="rsvp-cancel-btn">Cancel</button>
+          <button type="submit" class="btn" id="rsvp-submit-btn">Send RSVP</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="rsvp-success-wrap" class="rsvp-success" style="display:none;" tabindex="-1">
+      <div class="rsvp-success__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12l5 5L20 7"/>
+        </svg>
+      </div>
+      <h2>You're on the list.</h2>
+      <p>Marie will have everything ready for your visit. A confirmation has been sent to your inbox.</p>
+      <div class="rsvp-actions" style="justify-content:center;margin-top:var(--s5);">
+        <button type="button" class="btn" id="rsvp-done-btn">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script type="module" src="assets/js/firebase-init.js"></script>
 <script src="assets/js/site.js"></script>
 <script src="assets/js/listings.js"></script>
 <script src="assets/js/listing-detail.js"></script>
+<script src="assets/js/open-house-rsvp.js"></script>
 
 </body>
 </html>

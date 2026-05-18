@@ -143,9 +143,18 @@
     var ohSection = document.getElementById('detail-openhouses-section');
     if (listing.openHouses && listing.openHouses.length) {
       var oh = document.getElementById('detail-openhouses');
+      var listingAddr = listing.address.street + ', ' + listing.address.city;
       oh.innerHTML = listing.openHouses.map(function (e) {
-        return '<li><time datetime="' + u.escapeHtml(e.date) + '">' + u.escapeHtml(fmtDate(e.date)) + '</time>'
-             + '<span>' + u.escapeHtml(e.startTime) + ' – ' + u.escapeHtml(e.endTime) + '</span></li>';
+        var dateLabel = fmtDate(e.date);
+        var timeLabel = e.startTime + ' – ' + e.endTime;
+        return '<li><time datetime="' + u.escapeHtml(e.date) + '">' + u.escapeHtml(dateLabel) + '</time>'
+             + '<span>' + u.escapeHtml(timeLabel) + '</span>'
+             + '<button type="button" class="oh-rsvp-btn" data-rsvp-listing="' + u.escapeHtml(listing.id) + '"'
+             + ' data-rsvp-address="' + u.escapeHtml(listingAddr) + '"'
+             + ' data-rsvp-date="' + u.escapeHtml(e.date) + '"'
+             + ' data-rsvp-date-label="' + u.escapeHtml(dateLabel) + '"'
+             + ' data-rsvp-time="' + u.escapeHtml(timeLabel) + '">RSVP</button>'
+             + '</li>';
       }).join('');
     } else {
       ohSection.style.display = 'none';

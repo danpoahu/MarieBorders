@@ -5,20 +5,137 @@
 // any authenticated user — currently only Marie has an Auth account, so
 // effectively only she can edit. If multiple users get added later, upgrade
 // to an `admins/{uid}` allow-list pattern.
+//
+// LEAD COLLECTIONS (Phase A — Resend pipeline):
+//   contactInquiries, wishListSubmissions, homeValuationLeads,
+//   openHouseRSVPs, guideDownloads
+//
+// Public visitors can CREATE one of these (form submissions) but cannot read,
+// list, update, or delete. Creates must omit any `emailStatus` field — that is
+// written by the Cloud Function (admin SDK, bypasses rules). Shape validation
+// guards against malformed/spam writes.
+//
+// emailTemplates — auth-only end to end. The Cloud Function reads via admin SDK.
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isAuthed() { return request.auth != null; }
+    function isStr(v, maxLen) {
+      return v is string && v.size() > 0 && v.size() <= maxLen;
+    }
+    function isOptStr(v, maxLen) {
+      return v == null || (v is string && v.size() <= maxLen);
+    }
+    function isEmail(v) {
+      return v is string && v.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') && v.size() <= 254;
+    }
+    function isOptBool(v) { return v == null || v is bool; }
+    function isOptNum(v) { return v == null || v is number; }
+    function noStatusOnCreate() {
+      return !('emailStatus' in request.resource.data);
+    }
+    function hasServerTimestamp() {
+      return request.resource.data.createdAt == request.time;
+    }
 
     match /listings/{listingId} {
       allow read: if true;
       allow write: if isAuthed();
     }
+
     match /siteContent/{docId} {
       allow read: if true;
       allow write: if isAuthed();
     }
+
+    // ---- LEAD COLLECTIONS ----
+
+    match /contactInquiries/{id} {
+      allow read, list, update, delete: if isAuthed();
+      allow create: if noStatusOnCreate()
+        && hasServerTimestamp()
+        && isStr(request.resource.data.name, 200)
+        && isEmail(request.resource.data.email)
+        && isStr(request.resource.data.message, 5000)
+        && isOptStr(request.resource.data.phone, 40)
+        && isOptStr(request.resource.data.subject, 200)
+        && isOptStr(request.resource.data.listingId, 100)
+        && isOptStr(request.resource.data.listingAddress, 300);
+    }
+
+    match /wishListSubmissions/{id} {
+      allow read, list, update, delete: if isAuthed();
+      allow create: if noStatusOnCreate()
+        && hasServerTimestamp()
+        && isStr(request.resource.data.name, 200)
+        && isEmail(request.resource.data.email)
+        && isOptStr(request.resource.data.phone, 40)
+        && request.resource.data.neighborhoods is list
+        && request.resource.data.neighborhoods.size() <= 30
+        && request.resource.data.mustHaves is list
+        && request.resource.data.mustHaves.size() <= 50
+        && request.resource.data.niceToHaves is list
+        && request.resource.data.niceToHaves.size() <= 50
+        && isOptNum(request.resource.data.bedsMin)
+        && isOptNum(request.resource.data.bathsMin)
+        && isOptNum(request.resource.data.budgetMin)
+        && isOptNum(request.resource.data.budgetMax)
+        && isOptStr(request.resource.data.timeline, 40)
+        && isOptStr(request.resource.data.notes, 5000);
+    }
+
+    match /homeValuationLeads/{id} {
+      allow read, list, update, delete: if isAuthed();
+      allow create: if noStatusOnCreate()
+        && hasServerTimestamp()
+        && isStr(request.resource.data.name, 200)
+        && isEmail(request.resource.data.email)
+        && isOptStr(request.resource.data.phone, 40)
+        && request.resource.data.address is map
+        && isStr(request.resource.data.address.street, 300)
+        && isOptStr(request.resource.data.address.city, 100)
+        && isOptStr(request.resource.data.address.zip, 20)
+        && isOptStr(request.resource.data.condition, 40)
+        && isOptStr(request.resource.data.timeline, 40)
+        && isOptStr(request.resource.data.notes, 5000);
+    }
+
+    match /openHouseRSVPs/{id} {
+      allow read, list, update, delete: if isAuthed();
+      allow create: if noStatusOnCreate()
+        && hasServerTimestamp()
+        && isStr(request.resource.data.name, 200)
+        && isEmail(request.resource.data.email)
+        && isStr(request.resource.data.listingId, 100)
+        && isStr(request.resource.data.listingAddress, 300)
+        && isOptStr(request.resource.data.openHouseDate, 20)
+        && isOptStr(request.resource.data.openHouseTime, 100)
+        && isOptStr(request.resource.data.phone, 40)
+        && isOptNum(request.resource.data.guests)
+        && isOptBool(request.resource.data.workingWithAgent)
+        && isOptBool(request.resource.data.preApproved)
+        && isOptStr(request.resource.data.notes, 5000);
+    }
+
+    match /guideDownloads/{id} {
+      allow read, list, update, delete: if isAuthed();
+      allow create: if noStatusOnCreate()
+        && hasServerTimestamp()
+        && isStr(request.resource.data.name, 200)
+        && isEmail(request.resource.data.email)
+        && isOptStr(request.resource.data.phone, 40)
+        && request.resource.data.guide in ['buyer', 'seller']
+        && isOptBool(request.resource.data.marketingOptIn);
+    }
+
+    // ---- EMAIL TEMPLATES (auth only — read+write) ----
+
+    match /emailTemplates/{templateId} {
+      allow read, write: if isAuthed();
+    }
+
+    // Default-deny
     match /{document=**} {
       allow read, write: if false;
     }

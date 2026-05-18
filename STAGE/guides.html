@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<!--
+  STAGE — Phase D (Guides landing).
+  TODO before cutover: remove <meta name="robots" content="noindex">.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Guides | Marie Borders</title>
+<meta name="description" content="Two thoughtful, free guides — one for buyers, one for sellers — to demystify Marin County real estate.">
+<meta property="og:title" content="Guides | Marie Borders">
+<meta property="og:description" content="Marin Buyer's Guide and Seller's Guide — free, in-depth.">
+<meta property="og:image" content="assets/images/hero.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://marieborders.com/STAGE/guides.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css">
+<style>
+  .gd-section { padding: var(--s8) 0; }
+  .gd-wrap { max-width: 1080px; margin: 0 auto; padding: 0 var(--s5); }
+
+  .gd-intro {
+    text-align: center;
+    margin-bottom: var(--s7);
+  }
+  .gd-intro__lede {
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .gd-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--s5);
+  }
+  @media (max-width: 760px) {
+    .gd-cards { grid-template-columns: 1fr; }
+  }
+
+  .gd-card {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s7);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transition: all 0.2s;
+  }
+  .gd-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 8px 24px rgba(168, 133, 76, 0.08);
+  }
+  .gd-card__eyebrow {
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: var(--s3);
+  }
+  .gd-card h2 {
+    font-size: 1.8rem;
+    margin-bottom: var(--s3);
+  }
+  .gd-card__lede {
+    color: var(--ink-soft);
+    margin-bottom: var(--s5);
+    flex-grow: 1;
+  }
+  .gd-card__chapters {
+    list-style: none;
+    margin: 0;
+    padding: var(--s4) 0;
+    border-top: 1px solid var(--hush);
+    border-bottom: 1px solid var(--hush);
+    margin-bottom: var(--s5);
+  }
+  .gd-card__chapters li {
+    padding: var(--s2) 0;
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s3);
+  }
+  .gd-card__chapters li::before {
+    content: '';
+    flex-shrink: 0;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-top: 8px;
+  }
+  .gd-card .btn { align-self: flex-start; }
+
+  /* ---- Modal ---- */
+  .gd-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15, 20, 28, 0.55);
+    z-index: 300;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s4);
+  }
+  .gd-backdrop.is-open { display: flex; }
+  .gd-modal {
+    background: #fff;
+    border-radius: var(--radius);
+    max-width: 480px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: var(--s7);
+    position: relative;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  }
+  .gd-close {
+    position: absolute;
+    top: var(--s4); right: var(--s4);
+    background: transparent;
+    border: 0;
+    font-size: 1.6rem;
+    color: var(--ink-muted);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .gd-close:hover { color: var(--ink); }
+  .gd-modal h2 { font-size: 1.6rem; margin-bottom: var(--s2); }
+  .gd-modal__lede {
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    margin-bottom: var(--s5);
+  }
+
+  .gd-optin {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s3);
+    margin: var(--s4) 0;
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+  }
+  .gd-optin input {
+    width: auto;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .gd-error {
+    color: #7a3134;
+    background: rgba(122, 49, 52, 0.06);
+    border: 1px solid rgba(122, 49, 52, 0.2);
+    border-radius: var(--radius);
+    padding: var(--s3) var(--s4);
+    margin-top: var(--s3);
+    font-size: 0.9rem;
+    display: none;
+  }
+  .gd-error.is-visible { display: block; }
+
+  .gd-actions {
+    display: flex;
+    gap: var(--s3);
+    justify-content: flex-end;
+    margin-top: var(--s5);
+  }
+
+  .gd-success { text-align: center; padding: var(--s3) 0; }
+  .gd-success__icon {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: rgba(168, 133, 76, 0.12);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto var(--s4);
+  }
+  .gd-success__icon svg { width: 28px; height: 28px; }
+  .gd-success h2 { font-size: 1.6rem; margin-bottom: var(--s3); }
+  .gd-success__download {
+    display: inline-block;
+    margin-top: var(--s4);
+    padding: var(--s4) var(--s6);
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    border-radius: var(--radius);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  .gd-success__download:hover { background: var(--accent-deep); color: #fff; }
+  .gd-success__note {
+    color: var(--ink-muted);
+    font-size: 0.85rem;
+    margin-top: var(--s4);
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="brand" href="index.html">Marie Borders</a>
+    <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="primary-nav">
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <nav class="nav" id="primary-nav" aria-label="Primary">
+      <a class="nav__link" href="index.html">Home</a>
+      <a class="nav__link" href="about.html">About</a>
+      <a class="nav__link" href="for-sale.html">For Sale</a>
+      <a class="nav__link" href="wish-list.html">Wish List</a>
+      <a class="nav__link" href="home-value.html">Home Value</a>
+      <a class="nav__link" href="guides.html">Guides</a>
+      <a class="nav__link" href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero hero--small">
+    <div class="hero__inner">
+      <h1>Free Guides for Marin Buyers and Sellers</h1>
+      <p class="hero__tagline">Two thoughtful guides &mdash; no fluff, no upsell.</p>
+    </div>
+  </section>
+
+  <section class="gd-section">
+    <div class="gd-wrap">
+
+      <div class="gd-intro">
+        <p class="gd-intro__lede">
+          These are the conversations I have over and over with clients, written down in one place.
+          Honest about the market, careful about the details, and worth the few minutes it takes to read.
+        </p>
+      </div>
+
+      <div class="gd-cards">
+
+        <!-- Buyer's Guide -->
+        <article class="gd-card">
+          <div class="gd-card__eyebrow">For Buyers</div>
+          <h2>The Marin Buyer's Guide</h2>
+          <p class="gd-card__lede">
+            A clear-eyed walkthrough of buying a home in Marin County &mdash; from first call to final closing,
+            with a few honest words on what makes this market its own.
+          </p>
+          <ul class="gd-card__chapters">
+            <li>Before you start looking</li>
+            <li>Understanding Marin's micro-markets</li>
+            <li>The six-step buying process</li>
+            <li>How to write a strong offer</li>
+            <li>What to ask your agent before signing on</li>
+          </ul>
+          <button type="button" class="btn" data-guide="buyer">Get the Buyer's Guide</button>
+        </article>
+
+        <!-- Seller's Guide -->
+        <article class="gd-card">
+          <div class="gd-card__eyebrow">For Sellers</div>
+          <h2>The Marin Seller's Guide</h2>
+          <p class="gd-card__lede">
+            An honest walk through what it really takes to sell a Marin home well &mdash; from the first decision
+            to the final walkthrough, with notes on the choices that move the needle.
+          </p>
+          <ul class="gd-card__chapters">
+            <li>Before you list &mdash; the questions to settle</li>
+            <li>What actually moves the needle (and what doesn't)</li>
+            <li>The six-step selling process</li>
+            <li>What you'll net &mdash; a candid look at costs</li>
+            <li>Questions worth asking your listing agent</li>
+          </ul>
+          <button type="button" class="btn" data-guide="seller">Get the Seller's Guide</button>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ DOWNLOAD MODAL ============ -->
+<div class="gd-backdrop" id="gd-backdrop" role="dialog" aria-modal="true" aria-labelledby="gd-title" aria-hidden="true">
+  <div class="gd-modal">
+    <button type="button" class="gd-close" id="gd-close-btn" aria-label="Close">&times;</button>
+
+    <div id="gd-form-wrap">
+      <h2 id="gd-title">Get the Guide</h2>
+      <p class="gd-modal__lede">Where should I send your copy? You'll get the link immediately and a confirmation email.</p>
+
+      <form id="gd-form" novalidate>
+        <div class="field">
+          <label for="gd-name">Name <span class="req" aria-hidden="true">*</span></label>
+          <input type="text" id="gd-name" autocomplete="name" required aria-required="true">
+        </div>
+        <div class="field">
+          <label for="gd-email">Email <span class="req" aria-hidden="true">*</span></label>
+          <input type="email" id="gd-email" autocomplete="email" required aria-required="true">
+        </div>
+        <div class="field">
+          <label for="gd-phone">Phone <span style="color:var(--ink-muted);text-transform:none;letter-spacing:0;font-size:0.78rem;">(optional)</span></label>
+          <input type="tel" id="gd-phone" autocomplete="tel">
+        </div>
+
+        <label class="gd-optin">
+          <input type="checkbox" id="gd-marketingOptIn">
+          <span>I'd like Marie's occasional Marin market notes (no spam, unsubscribe anytime).</span>
+        </label>
+
+        <div id="gd-error" class="gd-error" role="alert"></div>
+
+        <div class="gd-actions">
+          <button type="button" class="btn btn--ghost" id="gd-cancel-btn">Cancel</button>
+          <button type="submit" class="btn" id="gd-submit-btn">Send Me the Guide</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="gd-success-wrap" class="gd-success" style="display:none;" tabindex="-1">
+      <div class="gd-success__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12l5 5L20 7"/>
+        </svg>
+      </div>
+      <h2>Here you go.</h2>
+      <p>Your copy is below &mdash; and a confirmation has been sent to your inbox.</p>
+      <a id="gd-download-link" class="gd-success__download" href="#" target="_blank" rel="noopener">Open the Guide</a>
+      <p class="gd-success__note">
+        Tip: once it opens, press <strong>Cmd+P</strong> (Mac) or <strong>Ctrl+P</strong> (Windows) to save as PDF.
+      </p>
+    </div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__cols">
+      <div>
+        <h4>Contact</h4>
+        <p><a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a></p>
+        <p><a href="tel:+14156011715">(415) 601-1715</a></p>
+        <p>DRE #01256719</p>
+      </div>
+      <div>
+        <h4>About</h4>
+        <p>Marie Borders is a Marin County native and licensed real estate agent representing buyers and sellers across the North Bay.</p>
+      </div>
+      <div>
+        <h4>Brokerage</h4>
+        <p><a href="https://marinsfinest.com" target="_blank" rel="noopener">Marin&rsquo;s Finest</a></p>
+        <p>Real Estate Associate | Team Leader</p>
+      </div>
+    </div>
+    <div class="site-footer__strip">
+      <span>&copy; <span data-year>2026</span> Marie Borders. Real Estate Associate, DRE #01256719. All rights reserved.</span>
+      <span class="eho">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+        Equal Housing Opportunity
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="assets/js/firebase-init.js"></script>
+<script src="assets/js/site.js"></script>
+<script src="assets/js/guide-download.js"></script>
+
+</body>
+</html>

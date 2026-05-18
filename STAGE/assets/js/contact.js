@@ -1,111 +1,83 @@
-/* Marie Borders — contact form handler (Phase 3)
+/* Marie Borders — contact form handler (Phase A — Resend pipeline)
  *
- * DELIVERY: mailto: composition (v1 decision — skip Formspree/Resend for now).
+ * Replaces the v1 mailto: composition with a Firestore write to
+ * `contactInquiries`. The `onContactInquiryCreate` Cloud Function picks
+ * it up and sends two emails via Resend:
  *
- *   Primary recipient: mariebordershometeam@gmail.com  (Anne, team coordinator)
- *   CC:                marie@marinsfinest.com
+ *   - Admin notification to Marie's team
+ *   - Auto-reply confirmation to the visitor
  *
- * --- mailto LIMITATIONS / CAVEATS ----------------------------------------
- *   1. Requires a configured mail handler on the visitor's device/browser.
- *      Desktop: macOS Mail / Outlook / Thunderbird must be set as default;
- *      Windows: same. Most users have *something* configured.
- *   2. Some mobile users (especially those who only use Gmail web with NO
- *      default mail handler) will see literally nothing happen. We render a
- *      fallback clickable mailto with no params after submit, which covers
- *      most of these cases — they can copy the address and email manually.
- *   3. The email is sent FROM the visitor's address, not via a server
- *      relay. That means Marie's inbox sees the real sender (good), but
- *      we can't audit/log inbound messages server-side (acceptable for v1).
- *   4. mailto body parameters have practical length limits (~2000 chars in
- *      some clients). Our subject + body together stay well under this.
- *   5. encodeURIComponent does NOT escape apostrophes — for the mailto body
- *      that's harmless (RFC 6068 allows ' verbatim). Memo feedback_attr-js-arg
- *      flags apostrophes only matter when injecting into a JS string literal
- *      inside an HTML attribute — N/A here.
+ * Why this is better than mailto:
+ *   1. Works on every device — no dependency on a configured mail client.
+ *      Visitors on web-only Gmail / mobile see real success, not nothing.
+ *   2. We get a server-side audit trail (every submission is in Firestore).
+ *   3. The visitor gets an automatic acknowledgement, not silence.
+ *   4. Marie's reply lands in the same email thread because the admin email
+ *      is sent with Reply-To set to the visitor's address.
  *
- * PHASE 3.5 CANDIDATE: revisit with a Cloud Function (Resend or SendGrid)
- *   if mailto friction becomes a measurable drop-off. Needs Blaze.
- * -------------------------------------------------------------------------
+ * Failure handling:
+ *   If Firestore is unreachable (offline, CF outage, etc.), we surface a
+ *   clear error AND offer the direct email + phone fallback. We do NOT
+ *   silently retry-to-mailto — that would reintroduce the "nothing happens
+ *   on no-mail-client" failure mode.
  */
 
 (function () {
   'use strict';
   window.MB = window.MB || {};
 
-  var DELIVERY_TO  = 'mariebordershometeam@gmail.com';
-  var DELIVERY_CC  = 'marie@marinsfinest.com';
-  var FALLBACK_TO  = 'marie@marinsfinest.com';
+  var FALLBACK_EMAIL = 'marie@marinsfinest.com';
+  var FALLBACK_PHONE = '(415) 601-1715';
 
-  /**
-   * Build a mailto: URL from a payload.
-   * payload: { name, email, phone, subject, message, listingId?, listingAddress? }
-   */
-  function buildMailto(payload) {
-    var subjectPrefix = '[marieborders.com] ';
-    var subject = subjectPrefix
-      + (payload.subject || 'Inquiry')
-      + (payload.name ? ' — ' + payload.name : '');
-
-    var bodyLines = [];
-    if (payload.name)    bodyLines.push('Name: '    + payload.name);
-    if (payload.email)   bodyLines.push('Email: '   + payload.email);
-    if (payload.phone)   bodyLines.push('Phone: '   + payload.phone);
-    if (payload.subject) bodyLines.push('Subject: ' + payload.subject);
-
-    if (payload.listingAddress) {
-      bodyLines.push('');
-      bodyLines.push('Regarding listing: ' + payload.listingAddress);
-      if (payload.listingId) {
-        bodyLines.push('Listing ID: ' + payload.listingId);
-      }
-    }
-
-    bodyLines.push('');
-    bodyLines.push('Message:');
-    bodyLines.push(payload.message || '');
-
-    var body = bodyLines.join('\r\n');
-
-    var url = 'mailto:' + encodeURIComponent(DELIVERY_TO)
-      + '?cc='      + encodeURIComponent(DELIVERY_CC)
-      + '&subject=' + encodeURIComponent(subject)
-      + '&body='    + encodeURIComponent(body);
-    return url;
+  function whenFirebaseReady(cb) {
+    if (window.MB.firebase && window.MB.firebase.db) { cb(); return; }
+    var done = false;
+    function finish() { if (done) return; done = true; cb(); }
+    window.addEventListener('mb:firebase-ready', finish, { once: true });
+    var tries = 0;
+    var iv = setInterval(function () {
+      tries += 1;
+      if (window.MB.firebase && window.MB.firebase.db) { clearInterval(iv); finish(); }
+      else if (tries > 40) { clearInterval(iv); finish(); }
+    }, 100);
   }
 
   /**
-   * Open the visitor's mail client with a pre-composed draft.
-   *
-   * We use a transient <a> click rather than `window.location.href = ...`
-   * because the latter, on iOS Safari and a couple of corporate-locked
-   * Windows installs, has been observed to leave the user on a blank
-   * about:blank page if no handler intercepts. Anchor-click stays on the
-   * current page across every browser tested.
-   */
-  function openMailDraft(url) {
-    var a = document.createElement('a');
-    a.href = url;
-    // Some browsers respect target=_self for mailto; others ignore it.
-    // Either way, the user stays on the contact page.
-    a.rel = 'noopener';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function () { a.remove(); }, 0);
-  }
-
-  /**
-   * sendContact(payload) -> Promise resolving when the mail draft has been opened.
-   * Always resolves — there is no way to know server-side whether the user
-   * actually sent the message.
+   * sendContact(payload) -> Promise<{ ok: boolean, id?: string, error?: string }>
+   * Writes to contactInquiries collection. The CF handles the email send.
    */
   MB.sendContact = function (payload) {
     return new Promise(function (resolve) {
-      var url = buildMailto(payload);
-      openMailDraft(url);
-      // Resolve immediately — no simulated delay (the user perceives this
-      // as instantaneous because their mail client is now opening).
-      resolve({ ok: true, url: url });
+      whenFirebaseReady(function () {
+        var fb = window.MB.firebase;
+        if (!fb || !fb.db || !fb.fs) {
+          resolve({ ok: false, error: 'Connection unavailable. Please try again or email Marie directly.' });
+          return;
+        }
+        var fs = fb.fs;
+        var data = {
+          name: payload.name,
+          email: payload.email,
+          phone: payload.phone || null,
+          subject: payload.subject || 'General inquiry',
+          message: payload.message,
+          listingId: payload.listingId || null,
+          listingAddress: payload.listingAddress || null,
+          createdAt: fs.serverTimestamp(),
+          source: 'website-contact-form'
+        };
+        try {
+          fs.addDoc(fs.collection(fb.db, 'contactInquiries'), data).then(function (ref) {
+            resolve({ ok: true, id: ref.id });
+          }).catch(function (err) {
+            console.warn('[contact] Firestore write failed:', err && err.message);
+            resolve({ ok: false, error: 'Could not submit your message right now.' });
+          });
+        } catch (e) {
+          console.warn('[contact] write error:', e && e.message);
+          resolve({ ok: false, error: 'Could not submit your message right now.' });
+        }
+      });
     });
   };
 
@@ -155,28 +127,33 @@
       if (!data.message) return showError('Please include a brief message.');
 
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Opening…';
+      submitBtn.textContent = 'Sending…';
 
-      MB.sendContact(data).then(function () {
-        // Swap the success message to set the right expectation for mailto.
-        if (successBox) {
-          successBox.innerHTML = ''
-            + '<h2 style="margin-bottom:0.5rem;">Almost There</h2>'
-            + '<p>Your email client should be opening with a draft. If nothing happens, please email Marie directly at <a href="mailto:' + FALLBACK_TO + '">' + FALLBACK_TO + '</a>.</p>';
-        }
-        form.style.display = 'none';
-        if (successBox) {
-          successBox.style.display = 'block';
-          successBox.focus();
-          window.scrollTo({
-            top: successBox.getBoundingClientRect().top + window.scrollY - 100,
-            behavior: 'smooth'
-          });
+      MB.sendContact(data).then(function (result) {
+        if (result && result.ok) {
+          if (successBox) {
+            successBox.innerHTML = ''
+              + '<h2 style="margin-bottom:0.5rem;">Thank You</h2>'
+              + '<p>Your message has been received. Marie will be in touch within one business day. You should see a confirmation email shortly — check spam if it doesn’t arrive.</p>';
+          }
+          form.style.display = 'none';
+          if (successBox) {
+            successBox.style.display = 'block';
+            successBox.focus();
+            window.scrollTo({
+              top: successBox.getBoundingClientRect().top + window.scrollY - 100,
+              behavior: 'smooth'
+            });
+          }
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send Message';
+          showError((result && result.error) || 'Something went wrong. Please email Marie at ' + FALLBACK_EMAIL + ' or call ' + FALLBACK_PHONE + '.');
         }
       }).catch(function () {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Send Message';
-        showError('Something went wrong. Please email Marie directly at ' + FALLBACK_TO + '.');
+        showError('Something went wrong. Please email Marie at ' + FALLBACK_EMAIL + ' or call ' + FALLBACK_PHONE + '.');
       });
 
       function showError(msg) {
