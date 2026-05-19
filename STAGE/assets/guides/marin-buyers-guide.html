@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <!--
-  STAGE placeholder buyer's guide. Marie will replace with her own copy.
-  Styled for both screen reading AND print/Save-as-PDF.
+  STAGE — Marin Buyer's Guide. Brand styling is locked here; the EDITABLE
+  body content comes from Firestore `guides/buyer` (or falls back to
+  MB.guideDefaults.buyer if Firestore is empty/down).
+  TODO before cutover: remove <meta name="robots" content="noindex">.
 -->
 <html lang="en">
 <head>
@@ -31,11 +33,7 @@
     line-height: 1.65;
     font-size: 16px;
   }
-  .page {
-    max-width: 760px;
-    margin: 0 auto;
-    padding: 4rem 2rem;
-  }
+  .page { max-width: 760px; margin: 0 auto; padding: 4rem 2rem; }
   .cover {
     text-align: center;
     padding-bottom: 3rem;
@@ -111,6 +109,15 @@
     font-size: 1.1rem;
     margin-right: 0.5rem;
   }
+  .step-card h3 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 400;
+    font-size: 1.25rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink);
+    margin-top: 0;
+  }
   .closing-card {
     background: var(--ink);
     color: #fff;
@@ -143,90 +150,16 @@
 <div class="page">
 
   <header class="cover">
-    <div class="eyebrow">Marie Borders &middot; Marin Real Estate</div>
-    <h1>The Marin Buyer's Guide</h1>
-    <p class="cover__lede">A clear-eyed walkthrough of buying a home in Marin County &mdash; from first call to final closing, with a few honest words on what makes this market its own.</p>
+    <div class="eyebrow" id="guide-eyebrow"></div>
+    <h1 id="guide-title"></h1>
+    <p class="cover__lede" id="guide-lede"></p>
   </header>
 
-  <h2>Before you start looking</h2>
-  <p>The most common mistake first-time Marin buyers make is starting the property hunt before they've done the inside work. Three things to settle first:</p>
-  <ol>
-    <li><strong>Your real budget.</strong> Pre-approval from a lender, with paperwork in hand. Online estimators are a starting point, not a number an offer can hang on.</li>
-    <li><strong>Your non-negotiables.</strong> Bedrooms, school zone, commute, accessibility &mdash; the three or four things that, if missing, mean the home is wrong. Everything else is a nice-to-have.</li>
-    <li><strong>Your timeline.</strong> Marin moves at its own pace. Some buyers are ready in 90 days; others spend a year. Both are fine. What matters is being honest about which one you are.</li>
-  </ol>
-
-  <blockquote>
-    "I'd rather work with a buyer for nine months and find them the right home than rush them into the wrong one in six weeks."
-  </blockquote>
-
-  <h2>Understanding the Marin micro-markets</h2>
-  <p>Marin isn't one market. It's a constellation of neighborhoods, each with its own rhythm. A few quick generalizations to start a conversation &mdash; never to end one:</p>
-
-  <h3>Southern Marin (Mill Valley, Tiburon, Sausalito, Belvedere)</h3>
-  <p>Closest to the city, oldest housing stock, steepest prices. Inventory turns slowly and homes often go off-market through networks before they ever hit the MLS. Working with a local agent matters most here.</p>
-
-  <h3>Central Marin (Larkspur, Corte Madera, San Anselmo, Ross, Kentfield)</h3>
-  <p>Family-favorite school districts, mix of cottages and substantial homes. More inventory than the south, still tight. Walking-town life in San Anselmo and Larkspur is part of the appeal.</p>
-
-  <h3>Northern Marin (San Rafael, Novato)</h3>
-  <p>Most varied price range and largest inventory. Genuine starter-home opportunities still exist, especially in Terra Linda and parts of Novato. Newer construction is more common here.</p>
-
-  <h3>West Marin (Pt Reyes, Bolinas, Inverness, Stinson Beach)</h3>
-  <p>A separate world. Limited inventory, second-home and weekend-property territory, weather-dependent commute. Worth the conversation only if you know why you want to be there.</p>
-
-  <h2>The buying process, step by step</h2>
-
-  <div class="step-card">
-    <h3><span class="step-card__num">1</span>Get pre-approved</h3>
-    <p>Not pre-qualified &mdash; pre-approved, with real documents. Marin sellers and listing agents take pre-approval seriously, and the strongest offers are the ones that look bulletproof on financing.</p>
-  </div>
-
-  <div class="step-card">
-    <h3><span class="step-card__num">2</span>Define your search</h3>
-    <p>We'll talk through neighborhoods, must-haves, and budget. I'll set up custom searches that surface new listings the moment they hit the MLS &mdash; and quietly flag pre-market opportunities through agent channels.</p>
-  </div>
-
-  <div class="step-card">
-    <h3><span class="step-card__num">3</span>Tour homes &mdash; thoughtfully</h3>
-    <p>Open houses are useful but they're crowded. Private showings let us slow down, look in cabinets, sit in rooms, take time. I prefer to limit each session to three or four homes &mdash; more than that and they all blur together.</p>
-  </div>
-
-  <div class="step-card">
-    <h3><span class="step-card__num">4</span>Run the disclosures before you fall in love</h3>
-    <p>Most Marin listings provide a disclosure packet up front: inspections, pest reports, geological surveys, permit history. Read these <em>before</em> writing an offer. A short call with the inspector who wrote a report often answers more than a re-read of the document.</p>
-  </div>
-
-  <div class="step-card">
-    <h3><span class="step-card__num">5</span>Write a strong offer</h3>
-    <p>Multi-offer situations are common. A strong offer isn't always the highest one &mdash; it's the cleanest one. Few contingencies, large earnest money, demonstrated financing, and a thoughtful personal letter (where appropriate) often beat raw dollars.</p>
-  </div>
-
-  <div class="step-card">
-    <h3><span class="step-card__num">6</span>Inspect, negotiate, close</h3>
-    <p>Inspection contingencies are valuable for major surprises &mdash; foundation, roof, structural &mdash; not for nitpicking. Plan to handle the small stuff yourself. Typical Marin escrow runs 21 to 30 days.</p>
-  </div>
-
-  <h2>A few honest truths</h2>
-  <ul>
-    <li><strong>The "perfect" home doesn't exist.</strong> The right home solves your most important problems and lets you live with the rest.</li>
-    <li><strong>Disclosure packages are not casual reading.</strong> They tell you more about the home than any open house ever will.</li>
-    <li><strong>Patience and discipline win in a hot market</strong> &mdash; not aggression. Buyers who chase end up overpaying for the wrong house.</li>
-    <li><strong>Your agent works for you.</strong> A good buyer's agent will tell you when not to write an offer just as readily as they'll tell you when to write one.</li>
-  </ul>
-
-  <h2>What to ask your agent before signing on</h2>
-  <ol>
-    <li>How many transactions did you close in Marin in the last 12 months?</li>
-    <li>What neighborhoods do you know best, and where are you less strong?</li>
-    <li>Who is on your team? Who actually shows up to inspections?</li>
-    <li>How do you handle multi-offer situations on my behalf?</li>
-    <li>What's your communication style &mdash; text, email, weekly check-ins?</li>
-  </ol>
+  <div id="guide-body"></div>
 
   <div class="closing-card">
-    <h2>Let's talk.</h2>
-    <p>I'd love to hear what you're looking for. Whether you're nine months out or moving next quarter, there's value in starting the conversation early.</p>
+    <h2 id="guide-closing-title"></h2>
+    <p id="guide-closing-body"></p>
     <p style="margin-top:1.5rem;">
       <a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a><br>
       <a href="tel:+14156011715">(415) 601-1715</a><br>
@@ -239,5 +172,12 @@
   </div>
 
 </div>
+
+<script type="module" src="../js/firebase-init.js"></script>
+<script src="../js/guide-defaults.js"></script>
+<script src="../js/guide-renderer.js"></script>
+<script>
+  MB.guideRenderer.load('buyer');
+</script>
 </body>
 </html>

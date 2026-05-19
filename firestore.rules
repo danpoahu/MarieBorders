@@ -135,6 +135,13 @@ service cloud.firestore {
       allow read, write: if isAuthed();
     }
 
+    // ---- GUIDES (public read, auth write) ----
+
+    match /guides/{guideId} {
+      allow read: if true;
+      allow write: if isAuthed();
+    }
+
     // ---- EMAIL LOG (CMS read; CF writes via admin SDK, bypasses rules) ----
 
     match /emailLog/{id} {

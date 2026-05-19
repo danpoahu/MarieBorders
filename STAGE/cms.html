@@ -820,6 +820,173 @@
     .el-row { grid-template-columns: 100px 1fr 90px; }
     .el-cell--hide-mobile { display: none; }
   }
+
+  /* ---- Guides editor ---- */
+  .gc-subtabs {
+    display: flex;
+    gap: var(--s3);
+    margin-bottom: var(--s5);
+    border-bottom: 1px solid var(--hush);
+  }
+  .gc-subtab {
+    background: transparent;
+    border: 0;
+    padding: var(--s3) var(--s4);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .gc-subtab:hover { color: var(--ink); }
+  .gc-subtab.is-active {
+    color: var(--accent-deep);
+    border-bottom-color: var(--accent);
+  }
+
+  .gc-cover {
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    padding: var(--s5);
+    margin-bottom: var(--s5);
+  }
+  .gc-cover h3 {
+    margin-bottom: var(--s4);
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+
+  .gc-sections-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--s4);
+    flex-wrap: wrap;
+    gap: var(--s3);
+  }
+  .gc-sections-header h3 {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+  .gc-add-row {
+    display: flex;
+    gap: var(--s2);
+    align-items: center;
+  }
+  .gc-add-row select {
+    width: auto;
+    padding: var(--s2) var(--s3);
+    font-size: 0.88rem;
+  }
+
+  .gc-section-card {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s4);
+    margin-bottom: var(--s3);
+    position: relative;
+  }
+  .gc-section-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--s3);
+    gap: var(--s3);
+    flex-wrap: wrap;
+  }
+  .gc-section-card__type {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+  }
+  .gc-section-card__type label {
+    font-size: 0.74rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin: 0;
+  }
+  .gc-section-card__type select {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.82rem;
+    width: auto;
+  }
+  .gc-section-card__ctrls {
+    display: flex;
+    gap: var(--s1);
+  }
+  .gc-icon-btn {
+    background: transparent;
+    border: 1px solid var(--hush);
+    border-radius: 3px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ink-muted);
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 0;
+  }
+  .gc-icon-btn:hover { background: var(--paper-deep); color: var(--ink); }
+  .gc-icon-btn--danger:hover { color: #7a3134; border-color: #7a3134; }
+
+  .gc-section-card__body .field { margin-bottom: var(--s2); }
+  .gc-section-card__body input[type="text"],
+  .gc-section-card__body textarea {
+    font-family: var(--font-sans);
+    font-size: 0.92rem;
+  }
+  .gc-section-card__body textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+  .gc-section-card__help {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-top: var(--s2);
+  }
+  .gc-section-card__help code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--paper-deep);
+    padding: 1px 4px;
+    border-radius: 2px;
+    color: var(--accent-deep);
+  }
+
+  .gc-empty {
+    text-align: center;
+    padding: var(--s5);
+    color: var(--ink-muted);
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    font-style: italic;
+  }
+
+  .gc-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--s6);
+    padding-top: var(--s5);
+    border-top: 1px solid var(--hush);
+    flex-wrap: wrap;
+    gap: var(--s3);
+  }
+  .gc-actions__left { display: flex; gap: var(--s3); flex-wrap: wrap; }
+  .gc-actions__right { display: flex; gap: var(--s3); }
 </style>
 </head>
 <body>
@@ -862,6 +1029,7 @@
     <button class="cms-tab" type="button" data-tab="home">Home Page</button>
     <button class="cms-tab" type="button" data-tab="contact">Contact Info</button>
     <button class="cms-tab" type="button" data-tab="emails">Email Templates</button>
+    <button class="cms-tab" type="button" data-tab="guides">Guides</button>
     <button class="cms-tab" type="button" data-tab="emaillog">Email Log</button>
   </nav>
 
@@ -1076,6 +1244,84 @@
     </div>
   </section>
 
+  <!-- ============ GUIDES PANEL ============ -->
+  <section class="cms-panel" data-panel="guides">
+    <div class="cms-section">
+      <h2>Guides</h2>
+      <p class="helper-text" style="margin-top:0;margin-bottom:var(--s5);">
+        Edit the Buyer's and Seller's Guides. Pick a section type from the dropdown to add a heading, paragraph, quote, list, or numbered step card. Brand styling is locked &mdash; you control content only. Use <code style="font-family:ui-monospace,monospace;color:var(--accent-deep);">**bold**</code> and <code style="font-family:ui-monospace,monospace;color:var(--accent-deep);">*italic*</code> around words to format inline.
+      </p>
+
+      <div class="gc-subtabs" role="tablist">
+        <button class="gc-subtab is-active" type="button" role="tab" data-gc-which="buyer">Buyer's Guide</button>
+        <button class="gc-subtab" type="button" role="tab" data-gc-which="seller">Seller's Guide</button>
+      </div>
+
+      <div class="gc-cover">
+        <h3>Cover</h3>
+        <div class="field">
+          <label for="gc-title">Title (cover heading)</label>
+          <input type="text" id="gc-title">
+        </div>
+        <div class="field">
+          <label for="gc-eyebrow">Eyebrow tagline</label>
+          <input type="text" id="gc-eyebrow" placeholder="Marie Borders · Marin Real Estate">
+        </div>
+        <div class="field">
+          <label for="gc-coverLede">Cover lede paragraph</label>
+          <textarea id="gc-coverLede" rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="gc-sections-header">
+        <h3>Body sections</h3>
+        <div class="gc-add-row">
+          <label for="gc-add-type" style="margin:0;font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-muted);">Add:</label>
+          <select id="gc-add-type">
+            <option value="h2">Section heading (h2)</option>
+            <option value="h3">Sub-heading (h3)</option>
+            <option value="p">Paragraph</option>
+            <option value="quote">Pull quote</option>
+            <option value="ol">Numbered list</option>
+            <option value="ul">Bullet list</option>
+            <option value="step">Step card (auto-numbered)</option>
+          </select>
+          <button type="button" class="btn btn--secondary btn--sm" id="gc-add-btn">+ Add</button>
+        </div>
+      </div>
+
+      <div id="gc-sections"></div>
+
+      <div class="gc-cover" style="margin-top:var(--s5);">
+        <h3>Closing card</h3>
+        <p class="helper-text" style="margin-top:0;margin-bottom:var(--s3);">The dark card at the bottom of the guide. Contact info (email, phone, DRE #) is rendered automatically &mdash; you control the title and body text only.</p>
+        <div class="field">
+          <label for="gc-closingTitle">Closing card title</label>
+          <input type="text" id="gc-closingTitle">
+        </div>
+        <div class="field">
+          <label for="gc-closingBody">Closing card body</label>
+          <textarea id="gc-closingBody" rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="gc-actions">
+        <div class="gc-actions__left">
+          <button type="button" class="btn btn--secondary btn--sm" id="gc-reset-btn">Reset to Default</button>
+          <a class="btn btn--secondary btn--sm" id="gc-preview-link" href="#" target="_blank" rel="noopener">Preview Guide ↗</a>
+        </div>
+        <div class="gc-actions__right">
+          <button type="button" class="btn btn--secondary" id="gc-cancel-btn">Discard Changes</button>
+          <button type="button" class="btn" id="gc-save-btn">Save</button>
+        </div>
+      </div>
+
+      <p id="gc-customized-note" class="helper-text" style="display:none;margin-top:var(--s3);">
+        <strong style="color:var(--accent-deep);">Customized</strong> &mdash; this guide differs from the default. Click "Reset to Default" to revert.
+      </p>
+    </div>
+  </section>
+
   <!-- ============ EMAIL LOG PANEL ============ -->
   <section class="cms-panel" data-panel="emaillog">
     <div class="cms-section">
@@ -1279,6 +1525,7 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="assets/js/email-template-preview.js"></script>
+<script src="assets/js/guide-defaults.js"></script>
 <script type="module">
 /* ===========================================================
    Marie Borders CMS — single-file module
@@ -2626,6 +2873,355 @@ document.querySelectorAll('.cms-tab').forEach(tab => {
       elLoad();
     }
   });
+});
+
+/* ===========================================================
+   GUIDES EDITOR PANEL
+   =========================================================== */
+const GC_DEFAULTS = (window.MB && window.MB.guideDefaults) || { buyer: null, seller: null };
+const GC_PREVIEW_URLS = {
+  buyer:  'assets/guides/marin-buyers-guide.html',
+  seller: 'assets/guides/marin-sellers-guide.html'
+};
+const GC_TYPE_LABELS = {
+  h2: 'Section heading',
+  h3: 'Sub-heading',
+  p:  'Paragraph',
+  quote: 'Pull quote',
+  ol: 'Numbered list',
+  ul: 'Bullet list',
+  step: 'Step card'
+};
+
+// gcState[which] = { customized, data: { title, eyebrow, coverLede, sections, closingTitle, closingBody } }
+const gcState = { buyer: null, seller: null };
+let gcWhich = 'buyer';
+let gcDirty = false;
+let gcInitialized = false;
+let gcLoadInFlight = false;
+
+const gcTitleEl       = document.getElementById('gc-title');
+const gcEyebrowEl     = document.getElementById('gc-eyebrow');
+const gcCoverLedeEl   = document.getElementById('gc-coverLede');
+const gcSectionsEl    = document.getElementById('gc-sections');
+const gcClosingTitleEl= document.getElementById('gc-closingTitle');
+const gcClosingBodyEl = document.getElementById('gc-closingBody');
+const gcAddTypeEl     = document.getElementById('gc-add-type');
+const gcAddBtnEl      = document.getElementById('gc-add-btn');
+const gcSaveBtnEl     = document.getElementById('gc-save-btn');
+const gcCancelBtnEl   = document.getElementById('gc-cancel-btn');
+const gcResetBtnEl    = document.getElementById('gc-reset-btn');
+const gcPreviewLinkEl = document.getElementById('gc-preview-link');
+const gcCustomizedEl  = document.getElementById('gc-customized-note');
+
+function gcCloneDefault(which) {
+  // Deep-clone default so editor mutations don't pollute the constants.
+  const d = GC_DEFAULTS[which];
+  if (!d) return { title: '', eyebrow: '', coverLede: '', sections: [], closingTitle: '', closingBody: '' };
+  return JSON.parse(JSON.stringify(d));
+}
+
+async function gcLoadOne(which) {
+  try {
+    const snap = await getDoc(doc(db, 'guides', which));
+    if (snap.exists()) {
+      const d = snap.data() || {};
+      const hasContent = d.title || d.eyebrow || d.coverLede || (Array.isArray(d.sections) && d.sections.length);
+      if (hasContent) {
+        gcState[which] = { customized: true, data: {
+          title: d.title || '',
+          eyebrow: d.eyebrow || '',
+          coverLede: d.coverLede || '',
+          sections: Array.isArray(d.sections) ? d.sections : [],
+          closingTitle: d.closingTitle || '',
+          closingBody: d.closingBody || ''
+        }};
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('[guides] load failed for', which, err && err.message);
+  }
+  gcState[which] = { customized: false, data: gcCloneDefault(which) };
+}
+
+async function initGuides() {
+  if (gcInitialized || gcLoadInFlight) return;
+  gcLoadInFlight = true;
+  try {
+    await Promise.all([gcLoadOne('buyer'), gcLoadOne('seller')]);
+    gcInitialized = true;
+    gcRender();
+  } finally {
+    gcLoadInFlight = false;
+  }
+}
+
+function gcMarkDirty() { gcDirty = true; }
+
+function gcEscape(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function gcSectionFieldsHtml(section, idx) {
+  switch (section.type) {
+    case 'h2':
+    case 'h3':
+      return '<div class="field"><label>Heading text</label>'
+        + '<input type="text" data-gc-field="text" data-gc-idx="' + idx + '" value="' + gcEscape(section.text || '') + '">'
+        + '</div>';
+    case 'p':
+      return '<div class="field"><label>Paragraph text</label>'
+        + '<textarea data-gc-field="text" data-gc-idx="' + idx + '" rows="4">' + gcEscape(section.text || '') + '</textarea>'
+        + '<p class="gc-section-card__help">Use <code>**bold**</code> and <code>*italic*</code> around words to emphasize.</p>'
+        + '</div>';
+    case 'quote':
+      return '<div class="field"><label>Quote text</label>'
+        + '<textarea data-gc-field="text" data-gc-idx="' + idx + '" rows="3">' + gcEscape(section.text || '') + '</textarea>'
+        + '<p class="gc-section-card__help">Renders as a styled italic block with a gold left border.</p>'
+        + '</div>';
+    case 'ol':
+    case 'ul': {
+      const items = Array.isArray(section.items) ? section.items : [];
+      return '<div class="field"><label>List items (one per line)</label>'
+        + '<textarea data-gc-field="items" data-gc-idx="' + idx + '" rows="' + Math.max(4, items.length + 1) + '">' + gcEscape(items.join('\n')) + '</textarea>'
+        + '<p class="gc-section-card__help">Each line becomes one ' + (section.type === 'ol' ? 'numbered' : 'bulleted') + ' item. <code>**bold**</code> + <code>*italic*</code> work inside items.</p>'
+        + '</div>';
+    }
+    case 'step':
+      return '<div class="field"><label>Step title</label>'
+        + '<input type="text" data-gc-field="title" data-gc-idx="' + idx + '" value="' + gcEscape(section.title || '') + '">'
+        + '</div>'
+        + '<div class="field"><label>Step body</label>'
+        + '<textarea data-gc-field="body" data-gc-idx="' + idx + '" rows="3">' + gcEscape(section.body || '') + '</textarea>'
+        + '<p class="gc-section-card__help">Step number is auto-assigned in order. Add multiple step cards in a row to build a numbered process.</p>'
+        + '</div>';
+    default:
+      return '<p class="gc-section-card__help">Unknown section type.</p>';
+  }
+}
+
+function gcRender() {
+  if (!gcState[gcWhich]) return;
+  const data = gcState[gcWhich].data;
+
+  // Cover fields
+  gcTitleEl.value      = data.title || '';
+  gcEyebrowEl.value    = data.eyebrow || '';
+  gcCoverLedeEl.value  = data.coverLede || '';
+  gcClosingTitleEl.value = data.closingTitle || '';
+  gcClosingBodyEl.value  = data.closingBody || '';
+
+  // Sections
+  const sections = Array.isArray(data.sections) ? data.sections : [];
+  if (!sections.length) {
+    gcSectionsEl.innerHTML = '<div class="gc-empty">No body sections yet. Use the "Add" picker above to insert one.</div>';
+  } else {
+    gcSectionsEl.innerHTML = sections.map((sec, idx) => {
+      const typeOptions = Object.keys(GC_TYPE_LABELS).map(t => {
+        const selected = (t === sec.type) ? ' selected' : '';
+        return '<option value="' + t + '"' + selected + '>' + GC_TYPE_LABELS[t] + '</option>';
+      }).join('');
+      return '<div class="gc-section-card" data-gc-idx="' + idx + '">'
+        +   '<div class="gc-section-card__header">'
+        +     '<div class="gc-section-card__type">'
+        +       '<label>Type</label>'
+        +       '<select data-gc-typeselect data-gc-idx="' + idx + '">' + typeOptions + '</select>'
+        +     '</div>'
+        +     '<div class="gc-section-card__ctrls">'
+        +       '<button type="button" class="gc-icon-btn" data-gc-action="up" data-gc-idx="' + idx + '" title="Move up" ' + (idx === 0 ? 'disabled' : '') + '>↑</button>'
+        +       '<button type="button" class="gc-icon-btn" data-gc-action="down" data-gc-idx="' + idx + '" title="Move down" ' + (idx === sections.length - 1 ? 'disabled' : '') + '>↓</button>'
+        +       '<button type="button" class="gc-icon-btn gc-icon-btn--danger" data-gc-action="delete" data-gc-idx="' + idx + '" title="Delete">✕</button>'
+        +     '</div>'
+        +   '</div>'
+        +   '<div class="gc-section-card__body">' + gcSectionFieldsHtml(sec, idx) + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  // Preview link
+  gcPreviewLinkEl.setAttribute('href', GC_PREVIEW_URLS[gcWhich]);
+
+  // Customized note
+  gcCustomizedEl.style.display = gcState[gcWhich].customized ? 'block' : 'none';
+
+  gcBindSectionInputs();
+}
+
+function gcBindSectionInputs() {
+  // Per-field bindings (text, textarea inputs inside section cards)
+  gcSectionsEl.querySelectorAll('[data-gc-field]').forEach(input => {
+    input.addEventListener('input', () => {
+      const idx = parseInt(input.getAttribute('data-gc-idx'), 10);
+      const field = input.getAttribute('data-gc-field');
+      const section = gcState[gcWhich].data.sections[idx];
+      if (!section) return;
+      if (field === 'items') {
+        section.items = (input.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+      } else {
+        section[field] = input.value;
+      }
+      gcMarkDirty();
+    });
+  });
+
+  // Type selector — changes the section type and reshapes fields
+  gcSectionsEl.querySelectorAll('[data-gc-typeselect]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const idx = parseInt(sel.getAttribute('data-gc-idx'), 10);
+      const newType = sel.value;
+      const sections = gcState[gcWhich].data.sections;
+      if (!sections[idx]) return;
+      sections[idx] = gcDefaultSection(newType);
+      gcMarkDirty();
+      gcRender();
+    });
+  });
+
+  // Up / Down / Delete buttons
+  gcSectionsEl.querySelectorAll('[data-gc-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-gc-idx'), 10);
+      const action = btn.getAttribute('data-gc-action');
+      const sections = gcState[gcWhich].data.sections;
+      if (action === 'up' && idx > 0) {
+        [sections[idx - 1], sections[idx]] = [sections[idx], sections[idx - 1]];
+      } else if (action === 'down' && idx < sections.length - 1) {
+        [sections[idx + 1], sections[idx]] = [sections[idx], sections[idx + 1]];
+      } else if (action === 'delete') {
+        if (!confirm('Delete this section? This is undone only by clicking Discard Changes (before saving).')) return;
+        sections.splice(idx, 1);
+      } else {
+        return;
+      }
+      gcMarkDirty();
+      gcRender();
+    });
+  });
+}
+
+function gcDefaultSection(type) {
+  switch (type) {
+    case 'h2':    return { type: 'h2', text: '' };
+    case 'h3':    return { type: 'h3', text: '' };
+    case 'p':     return { type: 'p',  text: '' };
+    case 'quote': return { type: 'quote', text: '' };
+    case 'ol':    return { type: 'ol', items: [] };
+    case 'ul':    return { type: 'ul', items: [] };
+    case 'step':  return { type: 'step', title: '', body: '' };
+    default:      return { type: 'p',  text: '' };
+  }
+}
+
+// Top-level field bindings (cover + closing)
+[gcTitleEl, gcEyebrowEl, gcCoverLedeEl, gcClosingTitleEl, gcClosingBodyEl].forEach(el => {
+  el.addEventListener('input', () => {
+    const data = gcState[gcWhich].data;
+    data.title = gcTitleEl.value;
+    data.eyebrow = gcEyebrowEl.value;
+    data.coverLede = gcCoverLedeEl.value;
+    data.closingTitle = gcClosingTitleEl.value;
+    data.closingBody = gcClosingBodyEl.value;
+    gcMarkDirty();
+  });
+});
+
+// Sub-tab switching
+document.querySelectorAll('[data-gc-which]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const next = tab.getAttribute('data-gc-which');
+    if (next === gcWhich) return;
+    if (gcDirty && !confirm('Discard unsaved changes to the ' + (gcWhich === 'buyer' ? 'buyer' : 'seller') + "'s guide?")) return;
+    gcDirty = false;
+    document.querySelectorAll('[data-gc-which]').forEach(t => t.classList.toggle('is-active', t === tab));
+    gcWhich = next;
+    gcRender();
+  });
+});
+
+// Add section
+gcAddBtnEl.addEventListener('click', () => {
+  const type = gcAddTypeEl.value;
+  gcState[gcWhich].data.sections.push(gcDefaultSection(type));
+  gcMarkDirty();
+  gcRender();
+  // Scroll the new section into view
+  setTimeout(() => {
+    const cards = gcSectionsEl.querySelectorAll('.gc-section-card');
+    const last = cards[cards.length - 1];
+    if (last) {
+      last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const firstInput = last.querySelector('input,textarea');
+      if (firstInput) firstInput.focus();
+    }
+  }, 80);
+});
+
+// Save
+gcSaveBtnEl.addEventListener('click', async () => {
+  const data = gcState[gcWhich].data;
+  const payload = {
+    title: (data.title || '').trim(),
+    eyebrow: (data.eyebrow || '').trim(),
+    coverLede: (data.coverLede || '').trim(),
+    sections: data.sections,
+    closingTitle: (data.closingTitle || '').trim(),
+    closingBody: (data.closingBody || '').trim(),
+    updatedAt: serverTimestamp(),
+    updatedBy: (auth.currentUser && auth.currentUser.uid) || null
+  };
+  gcSaveBtnEl.disabled = true;
+  gcSaveBtnEl.textContent = 'Saving…';
+  try {
+    await setDoc(doc(db, 'guides', gcWhich), payload, { merge: false });
+    gcState[gcWhich].customized = true;
+    gcDirty = false;
+    gcCustomizedEl.style.display = 'block';
+    toast('Guide saved');
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+  } finally {
+    gcSaveBtnEl.disabled = false;
+    gcSaveBtnEl.textContent = 'Save';
+  }
+});
+
+// Discard (re-load from Firestore or defaults)
+gcCancelBtnEl.addEventListener('click', async () => {
+  if (gcDirty && !confirm('Discard your changes to this guide?')) return;
+  await gcLoadOne(gcWhich);
+  gcDirty = false;
+  gcRender();
+});
+
+// Reset to default
+gcResetBtnEl.addEventListener('click', async () => {
+  if (!confirm('Reset this guide to the default? Your customizations will be deleted from Firestore.')) return;
+  try {
+    await deleteDoc(doc(db, 'guides', gcWhich));
+    gcState[gcWhich] = { customized: false, data: gcCloneDefault(gcWhich) };
+    gcDirty = false;
+    gcRender();
+    toast('Reset to default');
+  } catch (err) {
+    toast('Reset failed: ' + (err.message || err), { error: true });
+  }
+});
+
+// Lazy-init the editor when the Guides tab is first opened
+document.querySelectorAll('.cms-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.getAttribute('data-tab') === 'guides' && !gcInitialized) initGuides();
+  });
+});
+
+// Wire into existing dirty-tracking so beforeunload prompts cover the guides tab too
+window.addEventListener('beforeunload', (e) => {
+  if (gcDirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
 });
 </script>
 
