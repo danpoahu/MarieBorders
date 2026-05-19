@@ -1229,6 +1229,51 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 /* ===========================================================
+   LIVE-HTML DEFAULTS
+   -----------------------------------------------------------
+   Reads the actual live HTML pages and pulls out the current
+   copy from [data-content="X"] elements. Used as the fallback
+   when a siteContent doc is missing or empty so the CMS always
+   reflects what's currently on the website. Cached in memory
+   so we only fetch each page once per session.
+   =========================================================== */
+const htmlDefaultsCache = {};
+async function loadDefaultsFromHtml(pageUrl) {
+  if (htmlDefaultsCache[pageUrl]) return htmlDefaultsCache[pageUrl];
+  try {
+    const res = await fetch(pageUrl, { cache: 'no-cache' });
+    if (!res.ok) { htmlDefaultsCache[pageUrl] = {}; return {}; }
+    const html = await res.text();
+    const root = new DOMParser().parseFromString(html, 'text/html');
+    const map = {};
+    root.querySelectorAll('[data-content]').forEach((el) => {
+      const key = el.getAttribute('data-content');
+      if (!key) return;
+      if (key === 'bioParagraphs') {
+        // Multi-paragraph container; skip any <p> holding a CTA button
+        map.bioParagraphs = Array.from(el.querySelectorAll('p'))
+          .filter(p => !p.querySelector('.btn'))
+          .map(p => (p.textContent || '').trim())
+          .filter(Boolean);
+      } else if (key === 'headshot' && el.tagName === 'IMG') {
+        map.headshotUrl = el.getAttribute('src') || '';
+      } else if (key === 'brokerage' && el.tagName === 'A') {
+        map.brokerage = (el.textContent || '').trim();
+        map.brokerageUrl = el.getAttribute('href') || '';
+      } else {
+        map[key] = (el.textContent || '').trim();
+      }
+    });
+    htmlDefaultsCache[pageUrl] = map;
+    return map;
+  } catch (e) {
+    console.warn('[defaults] fetch failed for', pageUrl, e && e.message);
+    htmlDefaultsCache[pageUrl] = {};
+    return {};
+  }
+}
+
+/* ===========================================================
    INIT — runs after sign-in
    =========================================================== */
 let initDone = false;
@@ -1815,12 +1860,15 @@ async function saveListing() {
    =========================================================== */
 async function loadHomeForm() {
   try {
-    const snap = await getDoc(doc(db, 'siteContent', 'home'));
+    const [snap, fromHtml] = await Promise.all([
+      getDoc(doc(db, 'siteContent', 'home')),
+      loadDefaultsFromHtml('index.html')
+    ]);
     const data = snap.exists() ? snap.data() : {};
-    document.getElementById('home-heroHeadline').value = data.heroHeadline || 'Marie Borders';
-    document.getElementById('home-heroSubhead').value  = data.heroSubhead  || 'Marin County Real Estate';
-    document.getElementById('home-introHeading').value = data.introHeading || 'Currently Featured';
-    document.getElementById('home-introBody').value    = data.introBody    || 'As a native of Marin County and a licensed real estate agent since 1999, Marie brings deep local roots and decades of experience to one of the most personal transactions of your life.';
+    document.getElementById('home-heroHeadline').value = data.heroHeadline || fromHtml.heroHeadline || 'Marie Borders';
+    document.getElementById('home-heroSubhead').value  = data.heroSubhead  || fromHtml.heroSubhead  || 'Marin County Real Estate';
+    document.getElementById('home-introHeading').value = data.introHeading || fromHtml.introHeading || 'Currently Featured';
+    document.getElementById('home-introBody').value    = data.introBody    || fromHtml.introBody    || '';
     dirtyForms.delete('home-form');
   } catch (e) {
     console.warn('home load failed:', e.message);
@@ -1849,23 +1897,30 @@ document.getElementById('home-form').addEventListener('submit', async (e) => {
    =========================================================== */
 async function loadAboutForm() {
   try {
-    const snap = await getDoc(doc(db, 'siteContent', 'about'));
+    const [snap, fromHtml] = await Promise.all([
+      getDoc(doc(db, 'siteContent', 'about')),
+      loadDefaultsFromHtml('about.html')
+    ]);
     const data = snap.exists() ? snap.data() : {};
-    document.getElementById('about-pageHeading').value = data.pageHeading || 'Get to Know Me';
-    const bios = Array.isArray(data.bioParagraphs) ? data.bioParagraphs : [
-      'As a native of Marin County, having lived, worked and volunteered within the Bay Area all of my life, I understand the area, its varied communities and complex markets intimately. I have been a licensed real estate agent since 1999. That combined with my over 25 years in business, banking and real estate finance makes me uniquely qualified to represent you with confidence in one of the biggest transactions of your life.',
-      'The attributes and qualities that I bring yield exponential results for my clients. I have a strong, decades-long background in sales and marketing with deep roots and countless connections in this community. I continually conduct extensive research of the markets to maintain my expertise and inform my clients of trends.',
-      'I thrive when engaged in frank and honest, productive negotiations, which ultimately leads to smooth transactions for my clients. I utilize the latest technology in addition to engaging my vast professional and personal networks, as I strategize together with you to prepare your property for sale for the right price at the best possible time.'
-    ];
+    document.getElementById('about-pageHeading').value = data.pageHeading || fromHtml.pageHeading || 'Get to Know Me';
+
+    const bios = Array.isArray(data.bioParagraphs) && data.bioParagraphs.length
+      ? data.bioParagraphs
+      : (Array.isArray(fromHtml.bioParagraphs) && fromHtml.bioParagraphs.length
+          ? fromHtml.bioParagraphs
+          : []);
     document.getElementById('about-bio1').value = bios[0] || '';
     document.getElementById('about-bio2').value = bios[1] || '';
     document.getElementById('about-bio3').value = bios[2] || '';
+
     aboutCredentials = Array.isArray(data.credentials) ? data.credentials.slice() : [
       'Real Estate Associate', 'Licensed Since 1999', 'DRE #01256719', 'Marin County Native'
     ];
     renderCredentialChips();
-    if (data.headshotUrl) {
-      document.getElementById('about-headshot-preview').src = data.headshotUrl;
+
+    const headshotSrc = data.headshotUrl || fromHtml.headshotUrl || '';
+    if (headshotSrc) {
+      document.getElementById('about-headshot-preview').src = headshotSrc;
     }
     dirtyForms.delete('about-form');
   } catch (e) {
@@ -1940,13 +1995,16 @@ document.getElementById('about-headshot-input').addEventListener('change', async
    =========================================================== */
 async function loadContactForm() {
   try {
-    const snap = await getDoc(doc(db, 'siteContent', 'contact'));
+    const [snap, fromHtml] = await Promise.all([
+      getDoc(doc(db, 'siteContent', 'contact')),
+      loadDefaultsFromHtml('contact.html')
+    ]);
     const data = snap.exists() ? snap.data() : {};
-    document.getElementById('contact-displayEmail').value = data.displayEmail || 'marie@marinsfinest.com';
-    document.getElementById('contact-phone').value        = data.phone        || '(415) 601-1715';
-    document.getElementById('contact-license').value      = data.license      || 'DRE #01256719';
-    document.getElementById('contact-brokerage').value    = data.brokerage    || "Marin's Finest";
-    document.getElementById('contact-brokerageUrl').value = data.brokerageUrl || 'https://marinsfinest.com';
+    document.getElementById('contact-displayEmail').value = data.displayEmail || fromHtml.displayEmail || 'marie@marinsfinest.com';
+    document.getElementById('contact-phone').value        = data.phone        || fromHtml.phone        || '(415) 601-1715';
+    document.getElementById('contact-license').value      = data.license      || fromHtml.license      || 'DRE #01256719';
+    document.getElementById('contact-brokerage').value    = data.brokerage    || fromHtml.brokerage    || "Marin's Finest";
+    document.getElementById('contact-brokerageUrl').value = data.brokerageUrl || fromHtml.brokerageUrl || 'https://marinsfinest.com';
     dirtyForms.delete('contact-form-cms');
   } catch (e) {
     console.warn('contact load failed:', e.message);
