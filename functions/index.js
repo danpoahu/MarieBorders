@@ -446,10 +446,10 @@ const GUIDE_URLS = {
   // Save-as-PDF themselves. Marie can swap in true PDFs later by updating
   // these URLs and uploading PDF files to assets/guides/.
   //
-  // STAGE serves these from /STAGE/assets/guides/ — once we copy to live,
-  // these absolute URLs (root path) will resolve correctly.
-  buyer: 'https://marieborders.com/assets/guides/marin-buyers-guide.html',
-  seller: 'https://marieborders.com/assets/guides/marin-sellers-guide.html'
+  // TODO before STAGE→live cutover: drop the "/STAGE" path segment from both
+  // URLs. Until then the guides only exist at the STAGE location.
+  buyer:  'https://marieborders.com/STAGE/assets/guides/marin-buyers-guide.html',
+  seller: 'https://marieborders.com/STAGE/assets/guides/marin-sellers-guide.html'
 };
 const GUIDE_LABELS = {
   buyer: "Marin Buyer's Guide",
