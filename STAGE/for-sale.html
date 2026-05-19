@@ -119,6 +119,16 @@
 
     var currentFilter = 'active';
     var allItems = [];
+    var userPickedFilter = false; // becomes true after the first user click on a chip
+    var didAutoFallback = false;
+
+    function setActiveChip(filter) {
+      chips.forEach(function (c) {
+        var match = c.getAttribute('data-filter') === filter;
+        c.classList.toggle('is-active', match);
+        c.setAttribute('aria-selected', match ? 'true' : 'false');
+      });
+    }
 
     function emptyMessage(filter) {
       var label = filter === 'active' ? 'active listings'
@@ -132,28 +142,47 @@
            + '</div>';
     }
 
+    function fallbackNoticeHtml() {
+      return '<div class="empty-state" style="background:transparent;padding:0 0 var(--s5);text-align:left;">'
+           +   '<p style="font-family:var(--font-sans);font-size:0.95rem;color:var(--ink-soft);margin:0;">'
+           +     'No homes currently for sale &mdash; here are recent listings Marie has represented.'
+           +   '</p>'
+           + '</div>';
+    }
+
     function render() {
+      // Auto-fallback: on first render, if the default Active filter is empty
+      // but other listings exist, switch to All so the page isn't blank.
+      if (!userPickedFilter && currentFilter === 'active' && allItems.length) {
+        var activeCount = allItems.filter(function (l) { return l.status === 'active'; }).length;
+        if (activeCount === 0) {
+          currentFilter = 'all';
+          didAutoFallback = true;
+          setActiveChip('all');
+        }
+      }
+
       var items;
       if (!currentFilter || currentFilter === 'all') {
         items = allItems.slice();
       } else {
         items = allItems.filter(function (l) { return l.status === currentFilter; });
       }
+
       if (!items.length) {
         grid.innerHTML = emptyMessage(currentFilter);
         return;
       }
-      grid.innerHTML = items.map(MB.renderListingCard).join('');
+
+      var prefix = (didAutoFallback && currentFilter === 'all') ? fallbackNoticeHtml() : '';
+      grid.innerHTML = prefix + items.map(MB.renderListingCard).join('');
     }
 
     chips.forEach(function (chip) {
       chip.addEventListener('click', function () {
-        chips.forEach(function (c) {
-          c.classList.remove('is-active');
-          c.setAttribute('aria-selected', 'false');
-        });
-        chip.classList.add('is-active');
-        chip.setAttribute('aria-selected', 'true');
+        userPickedFilter = true;
+        didAutoFallback = false;
+        setActiveChip(chip.getAttribute('data-filter'));
         currentFilter = chip.getAttribute('data-filter');
         render();
       });
