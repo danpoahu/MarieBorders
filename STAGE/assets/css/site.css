@@ -166,14 +166,18 @@ p { margin-bottom: var(--s4); }
 }
 .brand {
   font-family: var(--font-serif);
-  font-size: 1.55rem;
-  font-weight: 400;
+  font-size: 2rem;
+  font-weight: 500;
   letter-spacing: 0.02em;
   color: #fff;
   text-decoration: none;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
 }
 .site-header.is-scrolled .brand,
-.site-header.is-solid .brand { color: var(--ink); }
+.site-header.is-solid .brand {
+  color: var(--ink);
+  text-shadow: none;
+}
 
 .nav { display: flex; align-items: center; gap: var(--s6); }
 .nav__link {
