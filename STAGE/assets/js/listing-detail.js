@@ -33,10 +33,17 @@
     });
 
     var current = 0;
+    var multi = sorted.length > 1;
+
+    function counterHtml(idx) {
+      return multi
+        ? '<div class="gallery__counter">' + (idx + 1) + ' / ' + sorted.length + '</div>'
+        : '';
+    }
 
     function show(idx) {
       current = (idx + sorted.length) % sorted.length;
-      mainEl.innerHTML = MB.renderPhoto(sorted[current], 'Listing photo ' + (current + 1));
+      mainEl.innerHTML = MB.renderPhoto(sorted[current], 'Listing photo ' + (current + 1)) + counterHtml(current);
       if (thumbsEl) {
         thumbsEl.querySelectorAll('.gallery__thumb').forEach(function (btn, i) {
           btn.classList.toggle('is-active', i === current);
@@ -45,12 +52,38 @@
       }
     }
 
-    // Initial main
-    mainEl.innerHTML = MB.renderPhoto(sorted[0], 'Listing photo 1');
+    // Initial main + counter
+    mainEl.innerHTML = MB.renderPhoto(sorted[0], 'Listing photo 1') + counterHtml(0);
+
+    // Click-to-advance (left half = prev, right half = next).
+    // Only meaningful when there's more than one photo; otherwise the click
+    // would be a no-op and we shouldn't suggest interactivity with a pointer.
+    if (multi) {
+      mainEl.classList.add('is-clickable');
+      mainEl.setAttribute('aria-label', 'Click left side for previous photo, right side for next');
+      mainEl.addEventListener('click', function (e) {
+        var rect = mainEl.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        if (x < rect.width / 2) {
+          show(current - 1);
+        } else {
+          show(current + 1);
+        }
+      });
+      // Cursor hint — west-resize / east-resize render as ←/→ on most platforms.
+      mainEl.addEventListener('mousemove', function (e) {
+        var rect = mainEl.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        mainEl.style.cursor = (x < rect.width / 2) ? 'w-resize' : 'e-resize';
+      });
+      mainEl.addEventListener('mouseleave', function () {
+        mainEl.style.cursor = '';
+      });
+    }
 
     // Thumbnails (hide if only one)
     if (!thumbsEl) return;
-    if (sorted.length <= 1) { thumbsEl.style.display = 'none'; return; }
+    if (!multi) { thumbsEl.style.display = 'none'; return; }
 
     thumbsEl.innerHTML = sorted.map(function (p, i) {
       return '<button class="gallery__thumb' + (i === 0 ? ' is-active' : '') + '" type="button" data-idx="' + i + '" aria-label="Show photo ' + (i + 1) + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '">'
