@@ -135,6 +135,13 @@ service cloud.firestore {
       allow read, write: if isAuthed();
     }
 
+    // ---- EMAIL LOG (CMS read; CF writes via admin SDK, bypasses rules) ----
+
+    match /emailLog/{id} {
+      allow read, list: if isAuthed();
+      allow create, update, delete: if false;
+    }
+
     // Default-deny
     match /{document=**} {
       allow read, write: if false;

@@ -128,6 +128,40 @@ async function sendEmail(resend, { to, subject, html, replyTo, bcc }) {
 }
 
 /**
+ * Write an audit row to the emailLog collection. Used by the CMS Email Log
+ * tab so Marie/Daniel/Anne can see every email the site sent — admin notes,
+ * visitor auto-replies, failures, skipped — without needing inbox access.
+ *
+ * Per feedback_email-log-sentat: the `sentAt` field name is canonical and
+ * the CMS query orders by it. Don't rename.
+ */
+async function logEmail(entry) {
+  try {
+    const bodyHtml = entry.bodyHtml || '';
+    // Firestore doc limit is 1MB; cap body to keep logs small.
+    const cappedBody = bodyHtml.length > 200000 ? bodyHtml.slice(0, 200000) + '…[truncated]' : bodyHtml;
+    await db.collection('emailLog').add({
+      inquiryType: entry.inquiryType,
+      inquiryId: entry.inquiryId || null,
+      audience: entry.audience,              // 'admin' | 'visitor'
+      recipient: entry.recipient || null,
+      bcc: entry.bcc || null,
+      replyTo: entry.replyTo || null,
+      subject: entry.subject || '',
+      bodyHtml: cappedBody,
+      status: entry.status,                  // 'sent' | 'failed' | 'skipped'
+      messageId: entry.messageId || null,
+      error: entry.error || null,
+      visitorName: entry.visitorName || null,
+      visitorEmail: entry.visitorEmail || null,
+      sentAt: FieldValue.serverTimestamp()
+    });
+  } catch (err) {
+    console.warn('[logEmail] failed to write log entry:', err && err.message);
+  }
+}
+
+/**
  * Core send pipeline shared by all inquiry types.
  *
  * @param {object} ctx
@@ -161,45 +195,92 @@ async function runPipeline(ctx) {
     visitorSent: false, visitorSentAt: null, visitorError: null, visitorMessageId: null
   };
 
+  const visitorName = vars.name || null;
+  const visitorEmailForLog = vars.email || visitorEmail || null;
+  const inquiryId = docRef.id;
+
   // ---- Admin notification ----
   if (adminTemplate) {
+    const subject = render(adminTemplate.subject, vars);
+    const html = render(adminTemplate.bodyHtml, vars);
     try {
       const id = await sendEmail(resend, {
         to: BRAND.adminTo,
-        subject: render(adminTemplate.subject, vars),
-        html: render(adminTemplate.bodyHtml, vars),
-        replyTo,
+        subject, html, replyTo,
         bcc: BRAND.adminBcc
       });
       status.adminSent = true;
       status.adminSentAt = FieldValue.serverTimestamp();
       status.adminMessageId = id;
+      await logEmail({
+        inquiryType, inquiryId, audience: 'admin',
+        recipient: BRAND.adminTo, bcc: BRAND.adminBcc, replyTo,
+        subject, bodyHtml: html,
+        status: 'sent', messageId: id,
+        visitorName, visitorEmail: visitorEmailForLog
+      });
     } catch (err) {
       status.adminError = err && err.message ? err.message : String(err);
       console.error('[runPipeline] admin send failed', inquiryType, status.adminError);
+      await logEmail({
+        inquiryType, inquiryId, audience: 'admin',
+        recipient: BRAND.adminTo, bcc: BRAND.adminBcc, replyTo,
+        subject, bodyHtml: html,
+        status: 'failed', error: status.adminError,
+        visitorName, visitorEmail: visitorEmailForLog
+      });
     }
   } else {
     status.adminError = 'admin template disabled';
+    await logEmail({
+      inquiryType, inquiryId, audience: 'admin',
+      recipient: BRAND.adminTo,
+      subject: '', bodyHtml: '',
+      status: 'skipped', error: 'admin template disabled',
+      visitorName, visitorEmail: visitorEmailForLog
+    });
   }
 
   // ---- Visitor auto-reply ----
   if (visitorTemplate && visitorEmail) {
+    const subject = render(visitorTemplate.subject, vars);
+    const html = render(visitorTemplate.bodyHtml, vars);
     try {
       const id = await sendEmail(resend, {
         to: visitorEmail,
-        subject: render(visitorTemplate.subject, vars),
-        html: render(visitorTemplate.bodyHtml, vars),
+        subject, html,
         replyTo: BRAND.fromEmail
       });
       status.visitorSent = true;
       status.visitorSentAt = FieldValue.serverTimestamp();
       status.visitorMessageId = id;
+      await logEmail({
+        inquiryType, inquiryId, audience: 'visitor',
+        recipient: visitorEmail, replyTo: BRAND.fromEmail,
+        subject, bodyHtml: html,
+        status: 'sent', messageId: id,
+        visitorName, visitorEmail: visitorEmailForLog
+      });
     } catch (err) {
       status.visitorError = err && err.message ? err.message : String(err);
       console.error('[runPipeline] visitor send failed', inquiryType, status.visitorError);
+      await logEmail({
+        inquiryType, inquiryId, audience: 'visitor',
+        recipient: visitorEmail, replyTo: BRAND.fromEmail,
+        subject, bodyHtml: html,
+        status: 'failed', error: status.visitorError,
+        visitorName, visitorEmail: visitorEmailForLog
+      });
     }
   } else if (!visitorTemplate) {
     status.visitorError = 'visitor template disabled';
+    await logEmail({
+      inquiryType, inquiryId, audience: 'visitor',
+      recipient: visitorEmail || null,
+      subject: '', bodyHtml: '',
+      status: 'skipped', error: 'visitor template disabled',
+      visitorName, visitorEmail: visitorEmailForLog
+    });
   }
 
   await docRef.update({ emailStatus: status });

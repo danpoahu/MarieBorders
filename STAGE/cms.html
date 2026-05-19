@@ -647,6 +647,179 @@
     color: var(--ink);
   }
   .et-enabled-row input { width: auto; }
+
+  /* ---- Email Log ---- */
+  .el-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s4);
+    margin-bottom: var(--s4);
+    flex-wrap: wrap;
+  }
+  .el-filters {
+    display: flex;
+    gap: var(--s2);
+    flex-wrap: wrap;
+  }
+  .el-chip {
+    background: transparent;
+    border: 1px solid var(--hush);
+    border-radius: 100px;
+    padding: var(--s2) var(--s4);
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    font-family: var(--font-sans);
+    transition: all 0.15s;
+  }
+  .el-chip:hover { color: var(--ink); border-color: var(--ink-muted); }
+  .el-chip.is-active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .el-table {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    overflow: hidden;
+    width: 100%;
+  }
+  .el-row {
+    display: grid;
+    grid-template-columns: 130px 1fr 1fr 110px 100px 90px;
+    gap: var(--s3);
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--hush);
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: background 0.1s;
+  }
+  .el-row:last-child { border-bottom: 0; }
+  .el-row:hover { background: var(--paper); }
+  .el-row--head {
+    background: var(--paper-deep);
+    cursor: default;
+    font-size: 0.74rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+  .el-row--head:hover { background: var(--paper-deep); }
+  .el-cell--ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .el-status {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+  .el-status--sent    { background: rgba(45, 106, 79, 0.12); color: #2d6a4f; }
+  .el-status--failed  { background: rgba(122, 49, 52, 0.12); color: #7a3134; }
+  .el-status--skipped { background: rgba(122, 126, 132, 0.12); color: var(--ink-muted); }
+
+  .el-audience {
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .el-empty {
+    text-align: center;
+    padding: var(--s7);
+    color: var(--ink-muted);
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+  }
+
+  /* ---- Email Log detail drawer ---- */
+  .el-detail-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15, 20, 28, 0.55);
+    z-index: 250;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s4);
+  }
+  .el-detail-backdrop.is-open { display: flex; }
+  .el-detail {
+    background: #fff;
+    border-radius: var(--radius);
+    max-width: 760px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .el-detail__close {
+    position: absolute;
+    top: var(--s3);
+    right: var(--s4);
+    background: transparent;
+    border: 0;
+    font-size: 1.8rem;
+    color: var(--ink-muted);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .el-detail__close:hover { color: var(--ink); }
+  .el-detail__header {
+    padding: var(--s5) var(--s6);
+    border-bottom: 1px solid var(--hush);
+    background: var(--paper-deep);
+  }
+  .el-detail__header h2 { font-size: 1.4rem; margin-bottom: var(--s3); }
+  .el-detail__meta {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    row-gap: var(--s2);
+    font-size: 0.85rem;
+  }
+  .el-detail__meta dt { color: var(--ink-muted); }
+  .el-detail__meta dd { color: var(--ink); word-break: break-word; }
+  .el-detail__body-bar {
+    padding: var(--s3) var(--s6);
+    background: var(--paper);
+    border-bottom: 1px solid var(--hush);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .el-detail__body {
+    padding: var(--s5) var(--s6);
+    overflow-y: auto;
+    flex: 1;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .el-detail__body p { margin-bottom: 12px; }
+  .el-detail__body ul { margin: 8px 0 12px 24px; }
+  .el-detail__body blockquote { margin: 12px 0; }
+  .el-detail__error {
+    background: rgba(122, 49, 52, 0.06);
+    border: 1px solid rgba(122, 49, 52, 0.2);
+    padding: var(--s3) var(--s4);
+    margin: var(--s4) var(--s6) 0;
+    border-radius: var(--radius);
+    font-size: 0.88rem;
+    color: #7a3134;
+  }
+
+  @media (max-width: 760px) {
+    .el-row { grid-template-columns: 100px 1fr 90px; }
+    .el-cell--hide-mobile { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -689,6 +862,7 @@
     <button class="cms-tab" type="button" data-tab="home">Home Page</button>
     <button class="cms-tab" type="button" data-tab="contact">Contact Info</button>
     <button class="cms-tab" type="button" data-tab="emails">Email Templates</button>
+    <button class="cms-tab" type="button" data-tab="emaillog">Email Log</button>
   </nav>
 
   <!-- ============ LISTINGS PANEL ============ -->
@@ -901,6 +1075,67 @@
       </div>
     </div>
   </section>
+
+  <!-- ============ EMAIL LOG PANEL ============ -->
+  <section class="cms-panel" data-panel="emaillog">
+    <div class="cms-section">
+      <h2>Email Log</h2>
+      <p class="helper-text" style="margin-top:0;margin-bottom:var(--s5);">
+        Every email the site sends &mdash; admin notifications, visitor auto-replies, and skipped/failed sends. Click any row to see the full message body.
+      </p>
+
+      <div class="el-toolbar">
+        <div class="el-filters" role="group" aria-label="Filter by status">
+          <button class="el-chip is-active" type="button" data-el-status="all">All</button>
+          <button class="el-chip" type="button" data-el-status="sent">Sent</button>
+          <button class="el-chip" type="button" data-el-status="failed">Failed</button>
+          <button class="el-chip" type="button" data-el-status="skipped">Skipped</button>
+        </div>
+        <div class="el-filters" role="group" aria-label="Filter by inquiry type">
+          <button class="el-chip is-active" type="button" data-el-type="all">All types</button>
+          <button class="el-chip" type="button" data-el-type="contactInquiry">Contact</button>
+          <button class="el-chip" type="button" data-el-type="wishList">Wish List</button>
+          <button class="el-chip" type="button" data-el-type="homeValuation">Home Value</button>
+          <button class="el-chip" type="button" data-el-type="openHouseRSVP">RSVP</button>
+          <button class="el-chip" type="button" data-el-type="guideDownload">Guide</button>
+        </div>
+        <button class="btn btn--secondary btn--sm" type="button" id="el-refresh-btn">Refresh</button>
+      </div>
+
+      <div class="el-table" id="el-table">
+        <div class="el-row el-row--head">
+          <div>When</div>
+          <div>To</div>
+          <div class="el-cell--hide-mobile">Subject</div>
+          <div class="el-cell--hide-mobile">Type</div>
+          <div class="el-cell--hide-mobile">Audience</div>
+          <div>Status</div>
+        </div>
+        <div id="el-rows" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ EMAIL LOG DETAIL ============ -->
+<div class="el-detail-backdrop" id="el-detail-backdrop" role="dialog" aria-modal="true" aria-labelledby="el-detail-title" aria-hidden="true">
+  <div class="el-detail">
+    <button type="button" class="el-detail__close" id="el-detail-close" aria-label="Close">&times;</button>
+    <div class="el-detail__header">
+      <h2 id="el-detail-title">Email</h2>
+      <dl class="el-detail__meta">
+        <dt>To</dt>     <dd id="el-detail-to">—</dd>
+        <dt>From</dt>   <dd>Marie Borders &lt;marie@marieborders.com&gt;</dd>
+        <dt>Reply&nbsp;to</dt> <dd id="el-detail-replyto">—</dd>
+        <dt>BCC</dt>    <dd id="el-detail-bcc">—</dd>
+        <dt>When</dt>   <dd id="el-detail-when">—</dd>
+        <dt>Status</dt> <dd id="el-detail-status">—</dd>
+      </dl>
+    </div>
+    <div id="el-detail-error-wrap"></div>
+    <div class="el-detail__body-bar">Email body (as recipient sees it)</div>
+    <div class="el-detail__body" id="el-detail-body">…</div>
+  </div>
 </div>
 
 <!-- ============ LISTING DRAWER ============ -->
@@ -2241,6 +2476,156 @@ etResetBtn.addEventListener('click', async () => {
   } catch (err) {
     toast('Reset failed: ' + (err.message || err), { error: true });
   }
+});
+
+/* ===========================================================
+   EMAIL LOG PANEL
+   =========================================================== */
+const EL_TYPE_LABELS = {
+  contactInquiry:  'Contact',
+  wishList:        'Wish List',
+  homeValuation:   'Home Value',
+  openHouseRSVP:   'RSVP',
+  guideDownload:   'Guide'
+};
+
+let elCache = [];
+let elFilterStatus = 'all';
+let elFilterType   = 'all';
+let elInitialized  = false;
+
+const elRowsEl       = document.getElementById('el-rows');
+const elRefreshBtn   = document.getElementById('el-refresh-btn');
+const elBackdrop     = document.getElementById('el-detail-backdrop');
+const elDetailClose  = document.getElementById('el-detail-close');
+
+function elFormatWhen(ts) {
+  if (!ts || typeof ts.toDate !== 'function') return '';
+  const d = ts.toDate();
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) {
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+    ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function elFormatWhenFull(ts) {
+  if (!ts || typeof ts.toDate !== 'function') return '';
+  return ts.toDate().toLocaleString('en-US', {
+    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', second: '2-digit'
+  });
+}
+
+function elRender() {
+  let items = elCache.slice();
+  if (elFilterStatus !== 'all') items = items.filter(r => r.status === elFilterStatus);
+  if (elFilterType   !== 'all') items = items.filter(r => r.inquiryType === elFilterType);
+
+  if (!items.length) {
+    elRowsEl.innerHTML = '<div class="el-empty">No emails match these filters.</div>';
+    return;
+  }
+
+  elRowsEl.innerHTML = items.map(r => {
+    const when = elFormatWhen(r.sentAt);
+    const to = r.recipient || '—';
+    const subj = r.subject || (r.status === 'skipped' ? '(template disabled)' : '');
+    const typeLabel = EL_TYPE_LABELS[r.inquiryType] || r.inquiryType || '—';
+    const audLabel = r.audience === 'admin' ? 'Marie' : 'Visitor';
+    return ''
+      + '<div class="el-row" data-el-id="' + escapeHtml(r.id) + '">'
+      +   '<div>' + escapeHtml(when) + '</div>'
+      +   '<div class="el-cell--ellipsis">' + escapeHtml(to) + '</div>'
+      +   '<div class="el-cell--ellipsis el-cell--hide-mobile">' + escapeHtml(subj) + '</div>'
+      +   '<div class="el-cell--hide-mobile">' + escapeHtml(typeLabel) + '</div>'
+      +   '<div class="el-audience el-cell--hide-mobile">' + escapeHtml(audLabel) + '</div>'
+      +   '<div><span class="el-status el-status--' + r.status + '">' + r.status + '</span></div>'
+      + '</div>';
+  }).join('');
+
+  elRowsEl.querySelectorAll('[data-el-id]').forEach(row => {
+    row.addEventListener('click', () => elOpenDetail(row.getAttribute('data-el-id')));
+  });
+}
+
+async function elLoad() {
+  try {
+    elRowsEl.innerHTML = '<div class="el-empty">Loading…</div>';
+    const q = query(collection(db, 'emailLog'), orderBy('sentAt', 'desc'));
+    const snap = await getDocs(q);
+    elCache = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    elRender();
+  } catch (err) {
+    console.warn('[email-log] load failed:', err && err.message);
+    elRowsEl.innerHTML = '<div class="el-empty" style="color:#7a3134;">Could not load log: ' + escapeHtml(err.message || '') + '</div>';
+  }
+}
+
+function elOpenDetail(id) {
+  const entry = elCache.find(e => e.id === id);
+  if (!entry) return;
+  document.getElementById('el-detail-title').textContent = entry.subject || '(no subject)';
+  document.getElementById('el-detail-to').textContent = entry.recipient || '—';
+  document.getElementById('el-detail-replyto').textContent = entry.replyTo || '—';
+  document.getElementById('el-detail-bcc').textContent = entry.bcc || '—';
+  document.getElementById('el-detail-when').textContent = elFormatWhenFull(entry.sentAt);
+  document.getElementById('el-detail-status').innerHTML =
+    '<span class="el-status el-status--' + entry.status + '">' + entry.status + '</span>';
+
+  const errWrap = document.getElementById('el-detail-error-wrap');
+  if (entry.error) {
+    errWrap.innerHTML = '<div class="el-detail__error"><strong>Error:</strong> ' + escapeHtml(entry.error) + '</div>';
+  } else {
+    errWrap.innerHTML = '';
+  }
+  document.getElementById('el-detail-body').innerHTML = entry.bodyHtml || '<em style="color:var(--ink-muted);">No body (template was disabled or send was skipped).</em>';
+
+  elBackdrop.classList.add('is-open');
+  elBackdrop.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+}
+
+function elCloseDetail() {
+  elBackdrop.classList.remove('is-open');
+  elBackdrop.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
+
+elDetailClose.addEventListener('click', elCloseDetail);
+elBackdrop.addEventListener('click', (e) => { if (e.target === e.currentTarget) elCloseDetail(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && elBackdrop.classList.contains('is-open')) elCloseDetail();
+});
+
+document.querySelectorAll('[data-el-status]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-el-status]').forEach(b => b.classList.toggle('is-active', b === btn));
+    elFilterStatus = btn.getAttribute('data-el-status');
+    elRender();
+  });
+});
+
+document.querySelectorAll('[data-el-type]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-el-type]').forEach(b => b.classList.toggle('is-active', b === btn));
+    elFilterType = btn.getAttribute('data-el-type');
+    elRender();
+  });
+});
+
+elRefreshBtn.addEventListener('click', elLoad);
+
+// Lazy-load when the Email Log tab is first opened
+document.querySelectorAll('.cms-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.getAttribute('data-tab') === 'emaillog' && !elInitialized) {
+      elInitialized = true;
+      elLoad();
+    }
+  });
 });
 </script>
 
