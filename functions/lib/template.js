@@ -67,6 +67,26 @@ function render(template, vars) {
     });
 }
 
+/**
+ * Plain-text variant — used for subject lines. No HTML escaping (an
+ * apostrophe in "Marin Buyer's Guide" should stay an apostrophe, not
+ * become &#39;). Arrays are flattened to comma-separated strings.
+ * `|raw` and `list:`/`ul:` prefixes are accepted but have no effect
+ * since there's no HTML escaping to opt out of.
+ */
+function renderText(template, vars) {
+  if (template == null) return '';
+  return String(template).replace(/\{\{\s*([a-zA-Z]+:)?([a-zA-Z0-9_.]+)(?:\s*\|\s*(raw))?\s*\}\}/g,
+    (match, prefix, key) => {
+      const value = getNested(vars, key);
+      if (value == null) return '';
+      if (Array.isArray(value)) {
+        return value.filter(v => v != null && v !== '').map(v => String(v)).join(', ');
+      }
+      return String(value);
+    });
+}
+
 function stripHtml(html) {
   if (html == null) return '';
   return String(html)
@@ -86,4 +106,4 @@ function stripHtml(html) {
     .trim();
 }
 
-module.exports = { render, stripHtml, escapeHtml };
+module.exports = { render, renderText, stripHtml, escapeHtml };

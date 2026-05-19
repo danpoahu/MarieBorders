@@ -2407,7 +2407,7 @@ function renderPreview() {
   const subject = etSubjectEl.value || '';
   const body = etBodyEl.value || '';
   const sample = ET.sampleVarsFor(etCurrentId);
-  etPreviewSubject.textContent = ET.render(subject, sample);
+  etPreviewSubject.textContent = ET.renderText(subject, sample);
   etPreviewBody.innerHTML = ET.render(body, sample);
 }
 

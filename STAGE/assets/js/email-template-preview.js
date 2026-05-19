@@ -312,6 +312,22 @@
       });
   }
 
+  // Plain-text variant for subject lines (no HTML escaping).
+  // Mirrors functions/lib/template.js renderText.
+  function renderText(template, vars) {
+    if (template == null) return '';
+    return String(template).replace(/\{\{\s*([a-zA-Z]+:)?([a-zA-Z0-9_.]+)(?:\s*\|\s*(raw))?\s*\}\}/g,
+      function (match, prefix, key) {
+        var value = getNested(vars, key);
+        if (value == null) return '';
+        if (Array.isArray(value)) {
+          return value.filter(function (v) { return v != null && v !== ''; })
+            .map(function (v) { return String(v); }).join(', ');
+        }
+        return String(value);
+      });
+  }
+
   // ---------- PUBLIC ----------
   MB.emailTemplates = {
     defaults: defaults,
@@ -319,6 +335,7 @@
     inquiryVars: inquiryVars,
     sampleVars: sampleVars,
     render: render,
+    renderText: renderText,
     escapeHtml: escapeHtml,
     /**
      * Returns the variable reference list for a template id.

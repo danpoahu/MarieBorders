@@ -37,7 +37,7 @@ const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { Resend } = require('resend');
 
-const { render, stripHtml, escapeHtml } = require('./lib/template');
+const { render, renderText, stripHtml, escapeHtml } = require('./lib/template');
 const fmt = require('./lib/formatters');
 const { defaultTemplates } = require('./lib/defaultTemplates');
 
@@ -201,7 +201,7 @@ async function runPipeline(ctx) {
 
   // ---- Admin notification ----
   if (adminTemplate) {
-    const subject = render(adminTemplate.subject, vars);
+    const subject = renderText(adminTemplate.subject, vars);
     const html = render(adminTemplate.bodyHtml, vars);
     try {
       const id = await sendEmail(resend, {
@@ -243,7 +243,7 @@ async function runPipeline(ctx) {
 
   // ---- Visitor auto-reply ----
   if (visitorTemplate && visitorEmail) {
-    const subject = render(visitorTemplate.subject, vars);
+    const subject = renderText(visitorTemplate.subject, vars);
     const html = render(visitorTemplate.bodyHtml, vars);
     try {
       const id = await sendEmail(resend, {
