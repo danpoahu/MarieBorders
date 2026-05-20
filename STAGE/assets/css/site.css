@@ -228,12 +228,18 @@ p { margin-bottom: var(--s4); }
 .site-header.is-solid .nav-toggle__bar { background: var(--ink); }
 
 /* Hamburger menu for phones AND portrait tablets (iPad portrait ~768-834px).
-   Landscape tablet / desktop (1024px+) keeps the inline nav. */
+   Landscape tablet / desktop (1024px+) keeps the inline nav.
+   Tablet: a side drawer (~340px) with a dimmed backdrop.
+   Phone (<=600px, see below): the menu takes the full screen. */
 @media (max-width: 1023px) {
   .nav-toggle { display: block; }
   .nav {
     position: fixed;
-    inset: 0;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 340px;
+    max-width: 85vw;
     background: var(--paper);
     flex-direction: column;
     justify-content: center;
@@ -241,8 +247,17 @@ p { margin-bottom: var(--s4); }
     transform: translateX(100%);
     transition: transform 0.3s ease;
     z-index: 90;
+    box-shadow: -8px 0 32px rgba(15, 20, 28, 0.18);
   }
   .nav.is-open { transform: translateX(0); }
+  /* Dimmed backdrop behind the drawer — click it to close (handled in site.js) */
+  body.nav-open::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 20, 28, 0.45);
+    z-index: 89;
+  }
   .nav__link {
     color: var(--ink) !important;
     font-size: 1.5rem;
@@ -257,6 +272,17 @@ p { margin-bottom: var(--s4); }
   .nav-toggle.is-active .nav-toggle__bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
   .nav-toggle.is-active .nav-toggle__bar:nth-child(2) { opacity: 0; }
   .nav-toggle.is-active .nav-toggle__bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+}
+
+/* Phones: the menu takes the full screen rather than a side drawer. */
+@media (max-width: 600px) {
+  .nav {
+    width: auto;
+    max-width: none;
+    left: 0;
+    box-shadow: none;
+  }
+  body.nav-open::before { display: none; }
 }
 
 /* ---------- Hero ---------- */

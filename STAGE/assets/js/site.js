@@ -35,6 +35,13 @@
     var nav = document.querySelector('.nav');
     if (!btn || !nav) return;
 
+    function closeNav() {
+      nav.classList.remove('is-open');
+      btn.classList.remove('is-active');
+      document.body.classList.remove('nav-open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
     btn.addEventListener('click', function () {
       var open = nav.classList.toggle('is-open');
       btn.classList.toggle('is-active', open);
@@ -44,12 +51,20 @@
 
     // Close menu when a nav link is tapped
     nav.querySelectorAll('a').forEach(function (a) {
-      a.addEventListener('click', function () {
-        nav.classList.remove('is-open');
-        btn.classList.remove('is-active');
-        document.body.classList.remove('nav-open');
-        btn.setAttribute('aria-expanded', 'false');
-      });
+      a.addEventListener('click', closeNav);
+    });
+
+    // Tablet drawer: clicking the dimmed backdrop (anywhere outside the
+    // drawer panel and not on the toggle) closes the menu.
+    document.addEventListener('click', function (e) {
+      if (!document.body.classList.contains('nav-open')) return;
+      if (e.target.closest('.nav') || e.target.closest('.nav-toggle')) return;
+      closeNav();
+    });
+
+    // Escape key closes the menu.
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && document.body.classList.contains('nav-open')) closeNav();
     });
   }
 
