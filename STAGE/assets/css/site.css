@@ -227,7 +227,9 @@ p { margin-bottom: var(--s4); }
 .site-header.is-scrolled .nav-toggle__bar,
 .site-header.is-solid .nav-toggle__bar { background: var(--ink); }
 
-@media (max-width: 720px) {
+/* Hamburger menu for phones AND portrait tablets (iPad portrait ~768-834px).
+   Landscape tablet / desktop (1024px+) keeps the inline nav. */
+@media (max-width: 1023px) {
   .nav-toggle { display: block; }
   .nav {
     position: fixed;
