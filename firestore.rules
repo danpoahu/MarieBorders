@@ -142,6 +142,16 @@ service cloud.firestore {
       allow write: if isAuthed();
     }
 
+    // ---- STAGE VISITS (STAGE preview traffic log) ----
+    // Anyone visiting STAGE can log a visit; only an authed user (Daniel,
+    // signed in) can read or clear them. Internal review tool only.
+
+    match /stageVisits/{id} {
+      allow create: if true;
+      allow read, list, delete: if isAuthed();
+      allow update: if false;
+    }
+
     // ---- EMAIL LOG (CMS read; CF writes via admin SDK, bypasses rules) ----
 
     match /emailLog/{id} {

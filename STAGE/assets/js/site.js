@@ -114,6 +114,60 @@
     }
   };
 
+  // --- STAGE visit logging ---
+  // Logs each page view on the STAGE preview site (timestamp, page, approx
+  // IP/geo, device) to Firestore `stageVisits` so Daniel can see who's been
+  // reviewing the site. STAGE-ONLY — never runs on the public root domain.
+  // TODO at launch: this whole feature comes out (no IP logging of real
+  // public visitors without a privacy policy).
+  function logStageVisit() {
+    if (window.location.pathname.indexOf('/STAGE/') === -1) return; // STAGE only
+
+    function whenFirebaseReady(cb) {
+      if (window.MB.firebase && window.MB.firebase.db) { cb(); return; }
+      var done = false;
+      function finish() { if (done) return; done = true; cb(); }
+      window.addEventListener('mb:firebase-ready', finish, { once: true });
+      var tries = 0;
+      var iv = setInterval(function () {
+        tries += 1;
+        if (window.MB.firebase && window.MB.firebase.db) { clearInterval(iv); finish(); }
+        else if (tries > 40) { clearInterval(iv); finish(); }
+      }, 100);
+    }
+
+    var geo = { ip: null, city: null, region: null, country: null };
+    // ipapi.co — free, no key, browser-CORS friendly. If it fails or rate
+    // limits, geo stays null and we still log the visit.
+    fetch('https://ipapi.co/json/')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .catch(function () { return null; })
+      .then(function (d) {
+        if (d) {
+          geo.ip = d.ip || null;
+          geo.city = d.city || null;
+          geo.region = d.region || null;
+          geo.country = d.country_name || null;
+        }
+        whenFirebaseReady(function () {
+          var fb = window.MB.firebase;
+          if (!fb || !fb.db || !fb.fs) return;
+          try {
+            fb.fs.addDoc(fb.fs.collection(fb.db, 'stageVisits'), {
+              page: window.location.pathname,
+              ip: geo.ip,
+              city: geo.city,
+              region: geo.region,
+              country: geo.country,
+              userAgent: navigator.userAgent || null,
+              referrer: document.referrer || null,
+              visitedAt: fb.fs.serverTimestamp()
+            });
+          } catch (e) { /* tolerate */ }
+        });
+      });
+  }
+
   // Init
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () {
@@ -121,11 +175,13 @@
       setupNavToggle();
       setupActiveNav();
       setupYearStamp();
+      logStageVisit();
     });
   } else {
     setupStickyHeader();
     setupNavToggle();
     setupActiveNav();
     setupYearStamp();
+    logStageVisit();
   }
 })();
