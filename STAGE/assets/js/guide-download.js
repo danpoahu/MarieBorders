@@ -173,6 +173,12 @@
     if (!document.getElementById('gd-backdrop')) return;
     bindCardTriggers();
     bindModalControls();
+    // Deep-link support: guides.html?guide=buyer (or seller) auto-opens that
+    // guide's request form — used by the CTAs on the Wish List / Home Value pages.
+    try {
+      var g = new URLSearchParams(window.location.search).get('guide');
+      if (g === 'buyer' || g === 'seller') openModal(g);
+    } catch (e) { /* tolerate */ }
   }
 
   if (document.readyState === 'loading') {
