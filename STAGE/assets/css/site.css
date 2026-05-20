@@ -416,16 +416,24 @@ p { margin-bottom: var(--s4); }
 @media (min-width: 720px)  { .listings-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1024px) { .listings-grid { grid-template-columns: repeat(3, 1fr); } }
 
-/* Home-page "Currently Featured" grid — flex-centered so 1, 2, or 3
-   cards stay centered rather than left-packed into empty grid columns. */
-#featured-grid {
+/* "Currently Featured" (home) + "Currently for Sale" grids — flex-centered
+   so 1 or 2 cards stay centered rather than left-packed into empty grid
+   columns. */
+#featured-grid,
+#listings-grid {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
 }
-#featured-grid > .card {
+#featured-grid > .card,
+#listings-grid > .card {
   flex: 1 1 320px;
   max-width: 380px;
+}
+/* The For Sale fallback notice ("showing recent listings…") spans its own
+   full-width row above the cards. */
+#listings-grid > .empty-state {
+  flex-basis: 100%;
 }
 
 .card {
