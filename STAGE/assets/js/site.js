@@ -136,36 +136,65 @@
       }, 100);
     }
 
-    var geo = { ip: null, city: null, region: null, country: null };
-    // ipapi.co — free, no key, browser-CORS friendly. If it fails or rate
-    // limits, geo stays null and we still log the visit.
-    fetch('https://ipapi.co/json/')
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .catch(function () { return null; })
-      .then(function (d) {
-        if (d) {
-          geo.ip = d.ip || null;
-          geo.city = d.city || null;
-          geo.region = d.region || null;
-          geo.country = d.country_name || null;
-        }
-        whenFirebaseReady(function () {
-          var fb = window.MB.firebase;
-          if (!fb || !fb.db || !fb.fs) return;
-          try {
-            fb.fs.addDoc(fb.fs.collection(fb.db, 'stageVisits'), {
-              page: window.location.pathname,
-              ip: geo.ip,
-              city: geo.city,
-              region: geo.region,
-              country: geo.country,
-              userAgent: navigator.userAgent || null,
-              referrer: document.referrer || null,
-              visitedAt: fb.fs.serverTimestamp()
-            });
-          } catch (e) { /* tolerate */ }
+    // Resolve approximate IP + geo. Cached in sessionStorage so we hit a geo
+    // API only ONCE per browsing session — clicking through several pages no
+    // longer makes repeated calls (which is what caused rate-limiting). Two
+    // free no-key providers: ipapi.co, then ipwho.is as a fallback.
+    function getGeo() {
+      var GEO_KEY = 'mb-stage-geo';
+      try {
+        var cached = JSON.parse(sessionStorage.getItem(GEO_KEY) || 'null');
+        if (cached && cached.ip) return Promise.resolve(cached);
+      } catch (e) { /* tolerate */ }
+
+      function fromIpapi() {
+        return fetch('https://ipapi.co/json/')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (d && d.ip) return { ip: d.ip, city: d.city || null, region: d.region || null, country: d.country_name || null };
+            return null;
+          })
+          .catch(function () { return null; });
+      }
+      function fromIpwho() {
+        return fetch('https://ipwho.is/')
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (d && d.success !== false && d.ip) return { ip: d.ip, city: d.city || null, region: d.region || null, country: d.country || null };
+            return null;
+          })
+          .catch(function () { return null; });
+      }
+
+      return fromIpapi()
+        .then(function (g) { return g || fromIpwho(); })
+        .then(function (g) {
+          var result = g || { ip: null, city: null, region: null, country: null };
+          if (result.ip) {
+            try { sessionStorage.setItem(GEO_KEY, JSON.stringify(result)); } catch (e) {}
+          }
+          return result;
         });
+    }
+
+    getGeo().then(function (geo) {
+      whenFirebaseReady(function () {
+        var fb = window.MB.firebase;
+        if (!fb || !fb.db || !fb.fs) return;
+        try {
+          fb.fs.addDoc(fb.fs.collection(fb.db, 'stageVisits'), {
+            page: window.location.pathname,
+            ip: geo.ip,
+            city: geo.city,
+            region: geo.region,
+            country: geo.country,
+            userAgent: navigator.userAgent || null,
+            referrer: document.referrer || null,
+            visitedAt: fb.fs.serverTimestamp()
+          });
+        } catch (e) { /* tolerate */ }
       });
+    });
   }
 
   // Init
