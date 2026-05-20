@@ -1065,7 +1065,7 @@
             <img id="about-headshot-preview" src="assets/images/marie-headshot.jpg" alt="Current headshot">
           </div>
           <div>
-            <input type="file" id="about-headshot-input" accept="image/jpeg,image/png,image/webp" style="display:none;">
+            <input type="file" id="about-headshot-input" accept="image/jpeg,image/png,image/webp,image/avif" style="display:none;">
             <button type="button" class="btn btn--secondary btn--sm" id="about-headshot-replace">Replace Photo</button>
             <p class="helper-text">JPEG, PNG, or WebP. Max 2000px wide — larger images are resized client-side before upload.</p>
             <div id="about-headshot-progress" class="upload-progress"></div>
@@ -1496,8 +1496,8 @@
       <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Photos</h3>
       <label class="dropzone" id="listing-dropzone">
         <span>Drop photos here, or click to browse</span>
-        <span class="dropzone__note">JPEG, PNG, or WebP. HEIC not supported — please save as JPEG first.</span>
-        <input type="file" id="listing-photo-input" accept="image/jpeg,image/png,image/webp" multiple>
+        <span class="dropzone__note">JPEG, PNG, WebP, or AVIF (AVIF is auto-converted to JPEG). HEIC not supported — please save as JPEG first.</span>
+        <input type="file" id="listing-photo-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple>
       </label>
       <div id="listing-photo-progress" class="upload-progress"></div>
       <div id="listing-photo-strip" class="photo-strip"></div>
@@ -2110,16 +2110,21 @@ function uuid() {
 }
 
 async function resizeImageIfNeeded(file) {
-  if (file.size < 200000) return file; // < 200KB, skip
+  // AVIF is accepted but always normalized to JPEG — some email clients and
+  // older software still can't render AVIF, so we never store it as-is.
+  const isAvif = /avif/i.test(file.type) || /\.avif$/i.test(file.name);
+  if (!isAvif && file.size < 200000) return file; // small non-AVIF, skip
   const bitmap = await createImageBitmap(file).catch(() => null);
   if (!bitmap) return file;
   const maxW = 2000;
-  if (bitmap.width <= maxW) {
+  if (!isAvif && bitmap.width <= maxW) {
     bitmap.close && bitmap.close();
     return file;
   }
-  const ratio = maxW / bitmap.width;
-  const w = maxW;
+  // Downscale if wider than maxW; otherwise keep dimensions (AVIF still gets
+  // re-encoded to JPEG even when no resize is needed).
+  const ratio = bitmap.width > maxW ? maxW / bitmap.width : 1;
+  const w = Math.round(bitmap.width * ratio);
   const h = Math.round(bitmap.height * ratio);
   const canvas = document.createElement('canvas');
   canvas.width = w;
@@ -2149,8 +2154,9 @@ async function handlePhotoFiles(fileList) {
       toast('Please save your photo as JPEG before uploading.', { error: true });
       continue;
     }
-    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
-      toast('Unsupported image type: ' + file.type, { error: true });
+    const isAvifFile = /avif/i.test(file.type) || /\.avif$/i.test(file.name);
+    if (!isAvifFile && !/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      toast('Unsupported image type: ' + (file.type || file.name), { error: true });
       continue;
     }
 
@@ -2441,7 +2447,8 @@ document.getElementById('about-headshot-replace').addEventListener('click', () =
 document.getElementById('about-headshot-input').addEventListener('change', async (e) => {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
-  if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+  const isAvifHeadshot = /avif/i.test(file.type) || /\.avif$/i.test(file.name);
+  if (!isAvifHeadshot && !/^image\/(jpeg|png|webp)$/.test(file.type)) {
     toast('Unsupported image type', { error: true });
     return;
   }
