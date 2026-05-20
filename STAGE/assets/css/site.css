@@ -416,6 +416,18 @@ p { margin-bottom: var(--s4); }
 @media (min-width: 720px)  { .listings-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (min-width: 1024px) { .listings-grid { grid-template-columns: repeat(3, 1fr); } }
 
+/* Home-page "Currently Featured" grid — flex-centered so 1, 2, or 3
+   cards stay centered rather than left-packed into empty grid columns. */
+#featured-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+#featured-grid > .card {
+  flex: 1 1 320px;
+  max-width: 380px;
+}
+
 .card {
   background: #fff;
   border: 1px solid var(--hush);
