@@ -136,36 +136,49 @@
       }, 100);
     }
 
-    // Capture only the visitor's IP — via ipify, a no-key service that does
-    // not rate-limit at this volume (unlike the geo APIs, which throttled and
-    // left earlier visits blank). City/region are NOT looked up here; the
-    // local visit viewer resolves IP -> location on demand, which keeps geo
-    // API calls to a tiny trickle (a few per session, not one per page).
-    // Cached per browsing session so we make one ipify call, not one per page.
-    function getIp() {
-      var IP_KEY = 'mb-stage-ip';
+    // Capture the visitor's IP AND approximate location in a single call to
+    // ipwho.is (a no-key service, generous free tier). Resolving geo here —
+    // at log time, on the live STAGE site, which is a normal https page — is
+    // far more reliable than the old approach of leaving it to the local
+    // file:// viewer, where the cross-origin lookup frequently failed and
+    // left the location blank. ipwho.is returns IP + city/region/country
+    // together, so this is a one-for-one replacement of the old ipify call —
+    // no extra requests. Cached for the browsing session so each visitor
+    // triggers just one call, not one per page.
+    function getVisitorInfo() {
+      var INFO_KEY = 'mb-stage-visitor';
       try {
-        var cached = sessionStorage.getItem(IP_KEY);
-        if (cached) return Promise.resolve(cached);
+        var cached = sessionStorage.getItem(INFO_KEY);
+        if (cached) return Promise.resolve(JSON.parse(cached));
       } catch (e) { /* tolerate */ }
-      return fetch('https://api.ipify.org?format=json')
+      return fetch('https://ipwho.is/')
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
-          var ip = (d && d.ip) ? d.ip : null;
-          if (ip) { try { sessionStorage.setItem(IP_KEY, ip); } catch (e) {} }
-          return ip;
+          if (!d || d.success === false) return {};
+          var info = {
+            ip: d.ip || null,
+            city: d.city || null,
+            region: d.region || null,
+            country: d.country || null
+          };
+          try { sessionStorage.setItem(INFO_KEY, JSON.stringify(info)); } catch (e) {}
+          return info;
         })
-        .catch(function () { return null; });
+        .catch(function () { return {}; });
     }
 
-    getIp().then(function (ip) {
+    getVisitorInfo().then(function (info) {
+      info = info || {};
       whenFirebaseReady(function () {
         var fb = window.MB.firebase;
         if (!fb || !fb.db || !fb.fs) return;
         try {
           fb.fs.addDoc(fb.fs.collection(fb.db, 'stageVisits'), {
             page: window.location.pathname,
-            ip: ip,
+            ip: info.ip || null,
+            city: info.city || null,
+            region: info.region || null,
+            country: info.country || null,
             userAgent: navigator.userAgent || null,
             referrer: document.referrer || null,
             visitedAt: fb.fs.serverTimestamp()
