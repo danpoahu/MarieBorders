@@ -126,6 +126,27 @@
     pill.textContent = statusLabel;
     pill.className = 'pill pill--' + listing.status;
 
+    // CTA copy adapts to status: sold listings can't be bought, so the inquire
+    // box pivots to "find a home like this" instead of "schedule a showing".
+    var inquireTitle = document.getElementById('inquire-title');
+    var inquireBody  = document.getElementById('inquire-body');
+    var inquireCta   = document.getElementById('inquire-cta');
+    var mobileCta    = document.getElementById('inquire-bar-mobile-cta');
+    if (inquireTitle && inquireBody && inquireCta) {
+      if (listing.status === 'sold') {
+        inquireTitle.textContent = 'Interested in a home similar to this one?';
+        inquireBody.textContent  = "This one's sold, but Marie can help you find another like it. Tell her what you're looking for and she'll send matching listings as they come up.";
+        inquireCta.textContent   = 'Find a Home Like This';
+        if (mobileCta) mobileCta.textContent = 'Find a Home Like This';
+      } else if (listing.status === 'pending') {
+        inquireTitle.textContent = 'Interested in this home?';
+        inquireBody.textContent  = "It's currently in contract, but backup offers are welcome — and Marie can flag it if it comes back on market.";
+        inquireCta.textContent   = 'Inquire Now';
+        if (mobileCta) mobileCta.textContent = 'Inquire About This Property';
+      }
+      // active uses the static HTML defaults — no override needed
+    }
+
     var price = listing.status === 'sold' && listing.soldPrice
       ? u.formatPrice(listing.soldPrice)
       : u.formatPrice(listing.listPrice);
