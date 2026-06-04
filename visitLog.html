@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<!--
+  Marie Borders — STAGE Visit Log (LOCAL viewer)
+
+  This file is PRIVATE. Keep it on your Mac only — do NOT put it on the
+  website or in the repo. Double-click it to open in a browser; it reads
+  the STAGE visit data directly from Firebase.
+
+  It is fully self-contained (Firebase config is inline) so it works from
+  anywhere on your computer. You can move it wherever you like.
+
+  Sign in with the same email/password you use for the website CMS.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marie Borders — STAGE Visit Log (Local)</title>
+<style>
+  :root {
+    --ink: #1a1f24; --ink-soft: #4a5057; --ink-muted: #7a7e84;
+    --paper: #faf8f4; --paper-deep: #f1ece2; --hush: #e8e2d4;
+    --accent: #a8854c; --accent-deep: #8a6a36; --flag: #7a3134;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--paper-deep); color: var(--ink-soft);
+    font-size: 14px; line-height: 1.5;
+  }
+  .bar {
+    background: var(--ink); color: #fff; padding: 0.85rem 1.25rem;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 0.75rem;
+  }
+  .bar h1 { font-size: 1.1rem; font-weight: 600; }
+  .bar .badge {
+    font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase;
+    background: var(--accent); color: #fff; padding: 2px 8px;
+    border-radius: 3px; margin-left: 0.5rem;
+  }
+  .bar button {
+    background: transparent; border: 1px solid rgba(255,255,255,0.4);
+    color: #fff; padding: 0.35rem 0.85rem; border-radius: 4px;
+    font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase;
+    cursor: pointer;
+  }
+  .bar button:hover { background: rgba(255,255,255,0.12); }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 1.5rem 1.25rem; }
+
+  .login {
+    min-height: 80vh; display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem;
+  }
+  .login-card {
+    background: #fff; border: 1px solid var(--hush); border-radius: 6px;
+    padding: 2rem; max-width: 380px; width: 100%;
+  }
+  .login-card h2 { font-size: 1.3rem; color: var(--ink); margin-bottom: 0.35rem; }
+  .login-card .sub { font-size: 0.85rem; color: var(--ink-muted); margin-bottom: 1rem; }
+  .field { margin-bottom: 0.9rem; }
+  .field label {
+    display: block; font-size: 0.72rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-muted); margin-bottom: 0.25rem;
+  }
+  .field input {
+    width: 100%; padding: 0.6rem 0.7rem; border: 1px solid var(--hush);
+    border-radius: 4px; font-size: 0.95rem; font-family: inherit;
+  }
+  .btn {
+    background: var(--accent); color: #fff; border: 0;
+    padding: 0.6rem 1.2rem; border-radius: 4px; cursor: pointer;
+    font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .btn:hover { background: var(--accent-deep); }
+  .login-err { color: var(--flag); font-size: 0.85rem; margin-top: 0.6rem; display: none; }
+  .login-err.show { display: block; }
+
+  .stats { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .stat {
+    background: #fff; border: 1px solid var(--hush); border-radius: 6px;
+    padding: 0.7rem 1rem; flex: 1; min-width: 130px;
+  }
+  .stat .n { font-size: 1.4rem; color: var(--ink); font-weight: 600; }
+  .stat .l {
+    font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  .hidden-ips {
+    background: #fff; border: 1px solid var(--hush); border-radius: 6px;
+    padding: 0.6rem 0.9rem; margin-bottom: 1rem; font-size: 0.82rem;
+  }
+  .hidden-ips .chip {
+    display: inline-block; background: var(--paper-deep);
+    border-radius: 100px; padding: 2px 8px; margin: 2px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.78rem; cursor: pointer;
+  }
+  .hidden-ips .chip:hover { background: var(--hush); }
+
+  table {
+    width: 100%; border-collapse: collapse; background: #fff;
+    border: 1px solid var(--hush); border-radius: 6px; overflow: hidden;
+  }
+  th, td {
+    text-align: left; padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--hush); font-size: 0.85rem; vertical-align: top;
+  }
+  th {
+    background: var(--paper-deep); font-size: 0.66rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-muted);
+  }
+  tr:last-child td { border-bottom: 0; }
+  .ip {
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem;
+    cursor: pointer; color: var(--accent-deep);
+  }
+  .ip:hover { text-decoration: underline; }
+  .where strong { color: var(--ink); }
+  .empty { text-align: center; padding: 2.5rem; color: var(--ink-muted); }
+  .note { font-size: 0.8rem; color: var(--ink-muted); margin-top: 1rem; }
+</style>
+</head>
+<body>
+
+<div id="login" class="login" style="display:none;">
+  <div class="login-card">
+    <h2>STAGE Visit Log</h2>
+    <p class="sub">Local viewer &middot; sign in with your website CMS login.</p>
+    <form id="login-form">
+      <div class="field">
+        <label for="le">Email</label>
+        <input type="email" id="le" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="lp">Password</label>
+        <input type="password" id="lp" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn">Sign In</button>
+      <div id="login-err" class="login-err"></div>
+    </form>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <div class="bar">
+    <h1>STAGE Visit Log <span class="badge">Local · Private</span></h1>
+    <div>
+      <button id="refresh">Refresh</button>
+      <button id="signout">Sign Out</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="stats" id="stats"></div>
+    <div class="hidden-ips" id="hidden-ips" style="display:none;"></div>
+    <div id="table-wrap"></div>
+    <p class="note">
+      Click any IP address to hide it (e.g. your own) — hidden IPs are stored only in this
+      browser. Location is approximate (city-level, from the visitor's IP) and can be off for
+      mobile data or VPN connections. This file is local to your computer and not on the website.
+    </p>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
+  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { initializeFirestore, collection, query, orderBy, getDocs }
+  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+// Public Firebase config — safe to embed (security is enforced by rules + auth).
+const firebaseConfig = {
+  apiKey: 'AIzaSyDV0gn8txrIAgl6Iw-oCyuNK0QkSoIlhlM',
+  authDomain: 'mbreal-83286.firebaseapp.com',
+  projectId: 'mbreal-83286',
+  storageBucket: 'mbreal-83286.firebasestorage.app',
+  messagingSenderId: '884218966489',
+  appId: '1:884218966489:web:bfb1ed0276a7622a30a9c8'
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+// experimentalForceLongPolling — required when this page is opened as a local
+// file:// document; Firestore's default WebChannel transport hangs from a
+// null origin, long-polling does not.
+const db = initializeFirestore(app, { experimentalForceLongPolling: true });
+
+const HIDDEN_KEY = 'mb-stage-hidden-ips';
+let allVisits = [];
+let geoMap = {};
+
+function getHidden() {
+  try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'); }
+  catch (e) { return []; }
+}
+function setHidden(arr) {
+  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr)); } catch (e) {}
+}
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function deviceLabel(ua) {
+  if (!ua) return '—';
+  const os = /iPhone/.test(ua) ? 'iPhone'
+           : /iPad/.test(ua) ? 'iPad'
+           : /Android/.test(ua) ? 'Android'
+           : /Macintosh/.test(ua) ? 'Mac'
+           : /Windows/.test(ua) ? 'Windows'
+           : 'Other';
+  const br = /CriOS|Chrome/.test(ua) ? 'Chrome'
+           : /Firefox|FxiOS/.test(ua) ? 'Firefox'
+           : /Edg/.test(ua) ? 'Edge'
+           : /Safari/.test(ua) ? 'Safari'
+           : '';
+  return br ? os + ' · ' + br : os;
+}
+function fmtWhen(ts) {
+  if (!ts || typeof ts.toDate !== 'function') return '—';
+  const d = ts.toDate();
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function render() {
+  const hidden = getHidden();
+  const visible = allVisits.filter(v => hidden.indexOf(v.ip) === -1);
+
+  const ips = {};
+  visible.forEach(v => { if (v.ip) ips[v.ip] = true; });
+  document.getElementById('stats').innerHTML =
+      '<div class="stat"><div class="n">' + visible.length + '</div><div class="l">Visits shown</div></div>'
+    + '<div class="stat"><div class="n">' + Object.keys(ips).length + '</div><div class="l">Distinct IPs</div></div>'
+    + '<div class="stat"><div class="n">' + allVisits.length + '</div><div class="l">Total logged</div></div>';
+
+  const hb = document.getElementById('hidden-ips');
+  if (hidden.length) {
+    hb.style.display = 'block';
+    hb.innerHTML = 'Hidden IPs (click to un-hide): '
+      + hidden.map(ip => '<span class="chip" data-unhide="' + esc(ip) + '">' + esc(ip) + ' ✕</span>').join('');
+    hb.querySelectorAll('[data-unhide]').forEach(c => {
+      c.addEventListener('click', () => {
+        const ip = c.getAttribute('data-unhide');
+        setHidden(getHidden().filter(x => x !== ip));
+        render();
+      });
+    });
+  } else {
+    hb.style.display = 'none';
+  }
+
+  const tw = document.getElementById('table-wrap');
+  if (!visible.length) {
+    tw.innerHTML = '<div class="empty">No visits to show.</div>';
+    return;
+  }
+  tw.innerHTML = '<table><thead><tr>'
+    + '<th>When</th><th>Where</th><th>IP</th><th>Page</th><th>Device</th>'
+    + '</tr></thead><tbody>'
+    + visible.map(v => {
+        // Geo comes from the resolved IP -> location map; fall back to any
+        // city/region stored on older visit docs.
+        const g = (v.ip && geoMap[v.ip]) || {};
+        const where = [g.city || v.city, g.region || v.region, g.country || v.country]
+          .filter(Boolean).map(esc).join(', ') || '—';
+        return '<tr>'
+          + '<td>' + esc(fmtWhen(v.visitedAt)) + '</td>'
+          + '<td class="where"><strong>' + where + '</strong></td>'
+          + '<td><span class="ip" data-hide="' + esc(v.ip || '') + '" title="Click to hide this IP">' + esc(v.ip || '—') + '</span></td>'
+          + '<td>' + esc(v.page || '') + '</td>'
+          + '<td>' + esc(deviceLabel(v.userAgent)) + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>';
+
+  tw.querySelectorAll('[data-hide]').forEach(el => {
+    el.addEventListener('click', () => {
+      const ip = el.getAttribute('data-hide');
+      if (!ip) return;
+      const h = getHidden();
+      if (h.indexOf(ip) === -1) { h.push(ip); setHidden(h); render(); }
+    });
+  });
+}
+
+// IP -> location resolution. The site only logs the IP; this viewer turns
+// IPs into cities. Only a handful of distinct IPs ever exist (you + Marie +
+// Anne), and results are cached in localStorage, so the geo service is hit
+// a few times total — never enough to rate-limit.
+const GEO_CACHE_KEY = 'mb-stage-ipgeo';
+function getGeoCache() {
+  try { return JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || '{}'); }
+  catch (e) { return {}; }
+}
+async function resolveGeo(ips) {
+  const cache = getGeoCache();
+  for (const ip of ips) {
+    if (cache[ip] && cache[ip].city) continue; // already resolved
+    try {
+      const r = await fetch('https://ipwho.is/' + encodeURIComponent(ip));
+      const d = r.ok ? await r.json() : null;
+      if (d && d.success !== false && d.city) {
+        cache[ip] = { city: d.city || null, region: d.region || null, country: d.country || null };
+      }
+    } catch (e) { /* leave unresolved — retry on next open */ }
+  }
+  try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch (e) {}
+  return cache;
+}
+
+async function loadVisits() {
+  const tw = document.getElementById('table-wrap');
+  tw.innerHTML = '<div class="empty">Loading…</div>';
+  try {
+    const snap = await getDocs(query(collection(db, 'stageVisits'), orderBy('visitedAt', 'desc')));
+    allVisits = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    render(); // paint immediately
+    // Resolve locations for any IPs we haven't cached, then re-paint.
+    const ips = Array.from(new Set(allVisits.map(v => v.ip).filter(Boolean)));
+    geoMap = await resolveGeo(ips);
+    render();
+  } catch (err) {
+    tw.innerHTML = '<div class="empty" style="color:#7a3134;">Could not load: ' + esc(err.message || '') + '</div>';
+  }
+}
+
+const loginEl = document.getElementById('login');
+const appEl = document.getElementById('app');
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    loginEl.style.display = 'none';
+    appEl.style.display = 'block';
+    loadVisits();
+  } else {
+    loginEl.style.display = 'flex';
+    appEl.style.display = 'none';
+  }
+});
+
+document.getElementById('login-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const err = document.getElementById('login-err');
+  err.classList.remove('show');
+  signInWithEmailAndPassword(
+    auth,
+    document.getElementById('le').value.trim(),
+    document.getElementById('lp').value
+  ).catch(() => {
+    err.textContent = 'Sign-in failed. Check your email and password.';
+    err.classList.add('show');
+  });
+});
+
+document.getElementById('signout').addEventListener('click', () => signOut(auth));
+document.getElementById('refresh').addEventListener('click', loadVisits);
+</script>
+</body>
+</html>
