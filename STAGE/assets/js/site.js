@@ -137,13 +137,16 @@
     }
 
     // Capture the visitor's IP AND approximate location in a single call to
-    // ipwho.is (a no-key service, generous free tier). Resolving geo here —
-    // at log time, on the live STAGE site, which is a normal https page — is
-    // far more reliable than the old approach of leaving it to the local
-    // file:// viewer, where the cross-origin lookup frequently failed and
-    // left the location blank. ipwho.is returns IP + city/region/country
-    // together, so this is a one-for-one replacement of the old ipify call —
-    // no extra requests. Cached for the browsing session so each visitor
+    // ipinfo.io (a no-key service, ~50k/month free, CORS-enabled). Resolving
+    // geo here — at log time, on the live https STAGE site — keeps the data on
+    // each record so the local file:// viewer just displays it.
+    //
+    // NOTE: this used to call ipwho.is, but in June 2026 ipwho.is dropped CORS
+    // on its free plan. Browser requests began returning HTTP 403 with
+    // {"success":false,"message":"CORS is not supported on the Free plan"}, so
+    // every visit silently logged a null IP/location. ipinfo.io returns
+    // ip + city/region/country with Access-Control-Allow-Origin:*, so it works
+    // from the browser. Cached for the browsing session so each visitor
     // triggers just one call, not one per page.
     function getVisitorInfo() {
       var INFO_KEY = 'mb-stage-visitor';
@@ -151,10 +154,10 @@
         var cached = sessionStorage.getItem(INFO_KEY);
         if (cached) return Promise.resolve(JSON.parse(cached));
       } catch (e) { /* tolerate */ }
-      return fetch('https://ipwho.is/')
+      return fetch('https://ipinfo.io/json')
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) {
-          if (!d || d.success === false) return {};
+          if (!d || !d.ip) return {};
           var info = {
             ip: d.ip || null,
             city: d.city || null,
