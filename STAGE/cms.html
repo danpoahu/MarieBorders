@@ -397,6 +397,22 @@
   .photo-card__star.is-on { color: var(--accent-deep); }
   .photo-card__star:hover, .photo-card__remove:hover { color: var(--ink); }
   .photo-card.is-dragging { opacity: 0.5; }
+  .video-card {
+    margin-top: var(--s3);
+    max-width: 360px;
+    border: 1px solid var(--line, #e3dccd);
+    border-radius: 6px;
+    overflow: hidden;
+    background: #000;
+  }
+  .video-card video { width: 100%; display: block; max-height: 240px; background: #000; }
+  .video-card .photo-card__remove {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    background: var(--paper-deep);
+    text-align: center;
+  }
 
   /* ---- Toast ---- */
   .toast {
@@ -1493,6 +1509,15 @@
       <div id="listing-openhouses"></div>
       <button type="button" class="oh-add" id="listing-add-oh">+ Add open house</button>
 
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Listing Video</h3>
+      <label class="dropzone" id="listing-video-dropzone">
+        <span>Drop a video here, or click to browse</span>
+        <span class="dropzone__note">MP4 or WebM, up to 10 MB (keep it to about 3 minutes). Plays first on the listing page and autoplays muted. Optional.</span>
+        <input type="file" id="listing-video-input" accept="video/mp4,video/webm">
+      </label>
+      <div id="listing-video-progress" class="upload-progress"></div>
+      <div id="listing-video-strip"></div>
+
       <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Photos</h3>
       <label class="dropzone" id="listing-dropzone">
         <span>Drop photos here, or click to browse</span>
@@ -1875,6 +1900,10 @@ async function deleteListing(id) {
         }
       }
     }
+    // Best-effort video cleanup
+    if (listing && listing.video && listing.video.storagePath) {
+      try { await deleteObject(storageRef(storage, listing.video.storagePath)); } catch (e) { /* tolerate */ }
+    }
     await deleteDoc(doc(db, 'listings', id));
     toast('Listing deleted');
   } catch (err) {
@@ -1889,6 +1918,7 @@ const drawer = document.getElementById('listing-drawer');
 const drawerBackdrop = document.getElementById('drawer-backdrop');
 let drawerEditingId = null;
 let drawerPhotos = []; // [{url, storagePath, caption?, order, isPrimary}]
+let drawerVideo = null; // {url, storagePath} | null
 let drawerFeatures = [];
 let drawerDirty = false;
 let drawerSlugManuallyEdited = false;
@@ -1910,7 +1940,11 @@ function openListingDrawer(id) {
   document.getElementById('listing-state').value = 'CA';
 
   drawerPhotos = [];
+  drawerVideo = null;
   drawerFeatures = [];
+
+  // Reset uploaders
+  document.getElementById('listing-video-progress').innerHTML = '';
 
   // Reset open houses
   document.getElementById('listing-openhouses').innerHTML = '';
@@ -1943,6 +1977,7 @@ function openListingDrawer(id) {
 
     drawerFeatures = Array.isArray(l.features) ? l.features.slice() : [];
     drawerPhotos = Array.isArray(l.photos) ? JSON.parse(JSON.stringify(l.photos)) : [];
+    drawerVideo = (l.video && l.video.url) ? JSON.parse(JSON.stringify(l.video)) : null;
 
     (Array.isArray(l.openHouses) ? l.openHouses : []).forEach(oh => addOpenHouseRow(oh));
   } else {
@@ -1951,6 +1986,7 @@ function openListingDrawer(id) {
 
   renderFeatureChips();
   renderPhotoStrip();
+  renderVideoStrip();
   updateSoldPriceVisibility();
 
   drawerBackdrop.classList.add('is-open');
@@ -2256,6 +2292,97 @@ function renderPhotoStrip() {
   });
 }
 
+/* ----- Listing video upload ----- */
+const VIDEO_MAX_BYTES = 10 * 1024 * 1024; // 10 MB hard cap
+const videoDropzone = document.getElementById('listing-video-dropzone');
+const videoInput = document.getElementById('listing-video-input');
+const videoStrip = document.getElementById('listing-video-strip');
+const videoProgress = document.getElementById('listing-video-progress');
+
+['dragenter', 'dragover'].forEach(ev => videoDropzone.addEventListener(ev, e => { e.preventDefault(); videoDropzone.classList.add('is-drag'); }));
+['dragleave', 'drop'].forEach(ev => videoDropzone.addEventListener(ev, e => { e.preventDefault(); videoDropzone.classList.remove('is-drag'); }));
+videoDropzone.addEventListener('drop', (e) => {
+  const files = e.dataTransfer && e.dataTransfer.files;
+  if (files && files.length) handleVideoFile(files[0]);
+});
+videoInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files.length) handleVideoFile(e.target.files[0]);
+  videoInput.value = ''; // allow re-selecting the same file after a remove
+});
+
+async function handleVideoFile(file) {
+  if (!/^video\/(mp4|webm)$/.test(file.type)) {
+    toast('Please upload an MP4 or WebM video.', { error: true });
+    return;
+  }
+  if (file.size > VIDEO_MAX_BYTES) {
+    toast('Video is ' + (file.size / 1048576).toFixed(1) + ' MB — the limit is 10 MB. Please compress it (about 3 minutes).', { error: true });
+    return;
+  }
+
+  if (!drawerEditingId) {
+    if (!window._tempListingId) window._tempListingId = 'temp_' + Date.now();
+  }
+  const scopeId = drawerEditingId || window._tempListingId;
+  markDrawerDirty();
+
+  const oldPath = drawerVideo && drawerVideo.storagePath;
+
+  const item = document.createElement('div');
+  item.className = 'upload-progress__item';
+  item.innerHTML = '<span>' + escapeHtml(file.name) + '</span><div class="upload-progress__bar"><div class="upload-progress__fill"></div></div><span class="pct">0%</span>';
+  videoProgress.appendChild(item);
+  const fill = item.querySelector('.upload-progress__fill');
+  const pct  = item.querySelector('.pct');
+
+  try {
+    const ext = file.type === 'video/webm' ? 'webm' : 'mp4';
+    const path = 'listing-photos/' + scopeId + '/video-' + uuid() + '.' + ext;
+    const ref = storageRef(storage, path);
+    const task = uploadBytesResumable(ref, file, { contentType: file.type });
+    await new Promise((resolve, reject) => {
+      task.on('state_changed', (snap) => {
+        const p = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        fill.style.width = p + '%';
+        pct.textContent = p + '%';
+      }, reject, resolve);
+    });
+    const url = await getDownloadURL(task.snapshot.ref);
+    drawerVideo = { url, storagePath: path };
+    // Replacing an existing video — clean up the old file
+    if (oldPath && oldPath !== path) {
+      try { await deleteObject(storageRef(storage, oldPath)); } catch (e) { /* tolerate */ }
+    }
+    renderVideoStrip();
+    item.remove();
+  } catch (err) {
+    pct.textContent = 'failed';
+    console.warn('video upload failed', err);
+    toast('Video upload failed: ' + (err.message || ''), { error: true });
+  }
+}
+
+function renderVideoStrip() {
+  if (!drawerVideo || !drawerVideo.url) {
+    videoStrip.innerHTML = '';
+    return;
+  }
+  videoStrip.innerHTML = ''
+    + '<div class="video-card">'
+    +   '<video src="' + escapeHtml(drawerVideo.url) + '" muted controls preload="metadata" playsinline></video>'
+    +   '<button type="button" class="photo-card__remove" id="listing-video-remove">Remove video</button>'
+    + '</div>';
+  document.getElementById('listing-video-remove').addEventListener('click', async () => {
+    if (!confirm('Remove this video?')) return;
+    if (drawerVideo && drawerVideo.storagePath) {
+      try { await deleteObject(storageRef(storage, drawerVideo.storagePath)); } catch (e) { /* tolerate */ }
+    }
+    drawerVideo = null;
+    renderVideoStrip();
+    markDrawerDirty();
+  });
+}
+
 /* ----- Save listing ----- */
 document.getElementById('listing-save-btn').addEventListener('click', saveListing);
 document.getElementById('listing-delete-btn').addEventListener('click', async () => {
@@ -2312,6 +2439,7 @@ async function saveListing() {
     description: document.getElementById('listing-description').value.trim() || '',
     features: drawerFeatures.slice(),
     photos: drawerPhotos.slice(),
+    video: drawerVideo ? { url: drawerVideo.url, storagePath: drawerVideo.storagePath } : null,
     openHouses: readOpenHouses(),
     slug: slugVal,
     soldAt: status === 'sold' ? (Timestamp.now()) : null

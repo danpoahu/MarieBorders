@@ -10,7 +10,13 @@ service firebase.storage {
 
     match /listing-photos/{listingId}/{file} {
       allow read: if true;
-      allow write: if isAuthed();
+      // Authed writes only. Images + listing videos share this path; cap size
+      // (backstop — the CMS enforces a 10 MB video limit client-side) and
+      // restrict to image/video content types.
+      allow write: if isAuthed()
+        && request.resource.size < 20 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*')
+            || request.resource.contentType.matches('video/.*'));
     }
     match /site/{file} {
       allow read: if true;

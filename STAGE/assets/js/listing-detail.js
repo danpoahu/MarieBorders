@@ -14,36 +14,87 @@
     } catch (e) { return iso; }
   }
 
-  function renderGallery(photos) {
+  function playIcon() {
+    return '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+  }
+  function soundOnIcon() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M19 7a8 8 0 0 1 0 10"/></svg>';
+  }
+  function soundOffIcon() {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="m22 9-6 6M16 9l6 6"/></svg>';
+  }
+
+  // photos: array of photo objects. video (optional): { url, storagePath }.
+  // When a video is present it is ALWAYS gallery item 0 and autoplays muted.
+  function renderGallery(photos, video) {
     var mainEl = document.getElementById('gallery-main');
     var thumbsEl = document.getElementById('gallery-thumbs');
     if (!mainEl) return;
+    var esc = MB.util.escapeHtml;
 
-    if (!photos || !photos.length) {
-      mainEl.innerHTML = MB.placeholderSvg('Photos coming soon');
-      if (thumbsEl) thumbsEl.style.display = 'none';
-      return;
-    }
-
-    // Sort: primary first, then by order
-    var sorted = photos.slice().sort(function (a, b) {
+    // Sort photos: primary first, then by order
+    var sorted = (photos || []).slice().sort(function (a, b) {
       if (a.isPrimary && !b.isPrimary) return -1;
       if (!a.isPrimary && b.isPrimary) return 1;
       return (a.order || 0) - (b.order || 0);
     });
 
+    // Build the item list — the video, if any, leads.
+    var items = [];
+    if (video && video.url) {
+      var prim = sorted.find(function (p) { return p.isPrimary; }) || sorted[0];
+      var poster = (prim && typeof prim.url === 'string' && prim.url.indexOf('placeholder:') !== 0) ? prim.url : '';
+      items.push({ isVideo: true, url: video.url, poster: poster });
+    }
+    sorted.forEach(function (p) { items.push(p); });
+
+    if (!items.length) {
+      mainEl.innerHTML = MB.placeholderSvg('Photos coming soon');
+      if (thumbsEl) thumbsEl.style.display = 'none';
+      return;
+    }
+
     var current = 0;
-    var multi = sorted.length > 1;
+    var multi = items.length > 1;
 
     function counterHtml(idx) {
       return multi
-        ? '<div class="gallery__counter">' + (idx + 1) + ' / ' + sorted.length + '</div>'
+        ? '<div class="gallery__counter">' + (idx + 1) + ' / ' + items.length + '</div>'
         : '';
     }
 
+    function mainHtml(item, idx) {
+      if (item.isVideo) {
+        return '<video class="gallery__video" autoplay muted loop playsinline preload="metadata"'
+             + (item.poster ? ' poster="' + esc(item.poster) + '"' : '')
+             + ' src="' + esc(item.url) + '"></video>'
+             + '<button type="button" class="gallery__unmute" data-unmute aria-label="Unmute video">'
+             + soundOffIcon() + '<span>Sound off</span></button>';
+      }
+      return MB.renderPhoto(item, 'Listing photo ' + (idx + 1));
+    }
+
+    // Wire the unmute toggle (the video element is recreated whenever it
+    // becomes the current item, so this runs each time we show the video).
+    function wireMain() {
+      var btn = mainEl.querySelector('[data-unmute]');
+      if (!btn) return;
+      var vid = mainEl.querySelector('video');
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation(); // don't let the click advance the gallery
+        if (!vid) return;
+        vid.muted = !vid.muted;
+        if (!vid.muted) { vid.play().catch(function () {}); }
+        btn.innerHTML = (vid.muted ? soundOffIcon() + '<span>Sound off</span>'
+                                   : soundOnIcon()  + '<span>Sound on</span>');
+        btn.setAttribute('aria-label', vid.muted ? 'Unmute video' : 'Mute video');
+      });
+    }
+
     function show(idx) {
-      current = (idx + sorted.length) % sorted.length;
-      mainEl.innerHTML = MB.renderPhoto(sorted[current], 'Listing photo ' + (current + 1)) + counterHtml(current);
+      current = (idx + items.length) % items.length;
+      mainEl.innerHTML = mainHtml(items[current], current) + counterHtml(current);
+      wireMain();
       if (thumbsEl) {
         thumbsEl.querySelectorAll('.gallery__thumb').forEach(function (btn, i) {
           btn.classList.toggle('is-active', i === current);
@@ -53,14 +104,15 @@
     }
 
     // Initial main + counter
-    mainEl.innerHTML = MB.renderPhoto(sorted[0], 'Listing photo 1') + counterHtml(0);
+    mainEl.innerHTML = mainHtml(items[0], 0) + counterHtml(0);
+    wireMain();
 
     // Click-to-advance (left half = prev, right half = next).
-    // Only meaningful when there's more than one photo; otherwise the click
+    // Only meaningful when there's more than one item; otherwise the click
     // would be a no-op and we shouldn't suggest interactivity with a pointer.
     if (multi) {
       mainEl.classList.add('is-clickable');
-      mainEl.setAttribute('aria-label', 'Click left side for previous photo, right side for next');
+      mainEl.setAttribute('aria-label', 'Click left side for previous, right side for next');
       mainEl.addEventListener('click', function (e) {
         var rect = mainEl.getBoundingClientRect();
         var x = e.clientX - rect.left;
@@ -85,9 +137,18 @@
     if (!thumbsEl) return;
     if (!multi) { thumbsEl.style.display = 'none'; return; }
 
-    thumbsEl.innerHTML = sorted.map(function (p, i) {
-      return '<button class="gallery__thumb' + (i === 0 ? ' is-active' : '') + '" type="button" data-idx="' + i + '" aria-label="Show photo ' + (i + 1) + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '">'
-           + MB.renderPhoto(p, 'Photo ' + (i + 1))
+    thumbsEl.innerHTML = items.map(function (item, i) {
+      var inner, label;
+      if (item.isVideo) {
+        label = 'Show video';
+        inner = (item.poster ? '<img src="' + esc(item.poster) + '" alt="Video">' : MB.placeholderSvg('Video'))
+              + '<span class="gallery__thumb-play">' + playIcon() + '</span>';
+      } else {
+        label = 'Show photo ' + (i + 1);
+        inner = MB.renderPhoto(item, 'Photo ' + (i + 1));
+      }
+      return '<button class="gallery__thumb' + (i === 0 ? ' is-active' : '') + '" type="button" data-idx="' + i + '" aria-label="' + label + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '">'
+           + inner
            + '</button>';
     }).join('');
 
@@ -107,12 +168,15 @@
     }
   }
 
+  // Exposed for isolated testing of the gallery (video-first + autoplay).
+  MB.renderGallery = renderGallery;
+
   function render(listing) {
     var u = MB.util;
     document.title = listing.address.street + ', ' + listing.address.city + ' | Marie Borders';
 
     // Gallery
-    renderGallery(listing.photos || []);
+    renderGallery(listing.photos || [], listing.video);
 
     // Head
     document.getElementById('detail-street').textContent = listing.address.street;

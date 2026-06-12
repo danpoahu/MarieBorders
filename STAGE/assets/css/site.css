@@ -689,11 +689,55 @@ p { margin-bottom: var(--s4); }
   cursor: pointer;
   border: 2px solid transparent;
   padding: 0;
+  position: relative;
 }
 .gallery__thumb.is-active { border-color: var(--accent); }
 .gallery__thumb img,
 .gallery__thumb svg { width: 100%; height: 100%; object-fit: cover; }
 .gallery__thumb:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- Listing video (always first gallery item, autoplays muted) ---- */
+.gallery__main video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.gallery__unmute {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 20, 28, 0.6);
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.gallery__unmute:hover { background: rgba(15, 20, 28, 0.8); }
+.gallery__unmute svg { width: 14px; height: 14px; }
+/* Play badge over the video thumbnail */
+.gallery__thumb-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.25);
+}
+.gallery__thumb-play svg {
+  width: 26px; height: 26px;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+}
 
 .detail-head {
   display: flex;
