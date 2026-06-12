@@ -302,6 +302,14 @@ p { margin-bottom: var(--s4); }
 .hero--small {
   min-height: 52vh;
 }
+/* Sub-page headers: smaller than the home headline (4.6rem was too big here) */
+.hero--small h1 {
+  font-size: clamp(2rem, 4.2vw, 3.2rem);
+}
+/* Home hero: nudge the headline block + buttons up a bit from dead-center */
+.hero:not(.hero--small) .hero__inner {
+  transform: translateY(-7vh);
+}
 .hero::before {
   content: '';
   position: absolute;
@@ -334,10 +342,11 @@ p { margin-bottom: var(--s4); }
   font-family: 'Marcellus', Georgia, serif;
   font-style: normal;
   font-weight: 400;
-  font-size: clamp(1.15rem, 2.6vw, 1.65rem);
+  font-size: clamp(1.3rem, 3vw, 1.9rem);
   letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.92);
+  color: #fff;
   margin-bottom: var(--s4);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 .hero__divider {
   width: 60px;
@@ -348,11 +357,12 @@ p { margin-bottom: var(--s4); }
 .hero__sub {
   font-family: var(--font-sans);
   font-weight: 300;
-  font-size: 1rem;
-  letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.12rem;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.96);
   margin-bottom: var(--s6);
   text-transform: uppercase;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
 }
 .hero__ctas {
   display: flex;
