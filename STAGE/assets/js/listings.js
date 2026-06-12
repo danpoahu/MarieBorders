@@ -127,6 +127,7 @@
       description: d.description || '',
       features: Array.isArray(d.features) ? d.features : [],
       photos: Array.isArray(d.photos) ? d.photos : [],
+      video: (d.video && d.video.url) ? { url: d.video.url, storagePath: d.video.storagePath || null } : null,
       listedAt: listedAtIso,
       soldAt: soldAtIso,
       openHouses: Array.isArray(d.openHouses) ? d.openHouses : [],
