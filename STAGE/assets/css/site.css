@@ -358,13 +358,16 @@ p { margin-bottom: var(--s4); }
 }
 .hero__sub {
   font-family: var(--font-sans);
-  font-weight: 300;
+  font-weight: 400;
   font-size: 1.12rem;
   letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.96);
+  color: #fff;
   margin-bottom: var(--s6);
   text-transform: uppercase;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+  text-shadow:
+    0 0 4px  rgba(0, 0, 0, 0.85),
+    0 1px 6px rgba(0, 0, 0, 0.8),
+    0 2px 14px rgba(0, 0, 0, 0.55);
 }
 .hero__ctas {
   display: flex;
