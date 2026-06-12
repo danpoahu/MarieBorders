@@ -302,9 +302,9 @@ p { margin-bottom: var(--s4); }
 .hero--small {
   min-height: 52vh;
 }
-/* Sub-page headers: smaller than the home headline (4.6rem was too big here) */
+/* Sub-page headers: match the mockup's page-header size (smaller than home) */
 .hero--small h1 {
-  font-size: clamp(2rem, 4.2vw, 3.2rem);
+  font-size: clamp(1.6rem, 3.2vw, 2.4rem);
 }
 /* Home hero: nudge the headline block + buttons up a bit from dead-center */
 .hero:not(.hero--small) .hero__inner {
