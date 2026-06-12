@@ -463,15 +463,39 @@ exports.onGuideDownloadCreate = onDocumentCreated(
     if (!snap) return;
     const data = snap.data() || {};
 
-    const guide = data.guide || 'buyer';
+    // Requested guides — `guides` is the full set the visitor asked for (the
+    // one they clicked + optionally the other via the "want both?" checkbox).
+    // Fall back to the single `guide` for older docs. Filter to known guides,
+    // dedupe, preserve order.
+    const requested = (Array.isArray(data.guides) && data.guides.length
+      ? data.guides
+      : [data.guide || 'buyer']).filter((g) => GUIDE_URLS[g]);
+    const guides = [...new Set(requested)];
+    if (!guides.length) guides.push('buyer');
+    const primary = guides[0];
+
+    const labels = guides.map((g) => GUIDE_LABELS[g] || 'Guide');
+    const guideLabel = labels.length > 1
+      ? labels.slice(0, -1).join(', ') + ' and ' + labels[labels.length - 1]
+      : labels[0];
+
+    // One styled button + paste-link per requested guide. Injected raw.
+    const guideLinksHtml = guides.map((g) =>
+      `<p style="text-align:center;margin:24px 0 4px;">`
+      + `<a href="${GUIDE_URLS[g]}" style="display:inline-block;padding:14px 28px;background:#a8854c;color:#fff;text-decoration:none;font-family:Inter,sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:13px;">Open the ${GUIDE_LABELS[g]}</a>`
+      + `</p>`
+      + `<p style="text-align:center;font-size:13px;margin:0 0 18px;color:#7a7e84;">or paste into your browser:<br><a href="${GUIDE_URLS[g]}">${GUIDE_URLS[g]}</a></p>`
+    ).join('');
+
     const vars = {
       name: data.name || '',
       firstName: firstName(data.name),
       email: data.email || '',
       phone: nullToDash(data.phone),
-      guide,
-      guideLabel: GUIDE_LABELS[guide] || 'Guide',
-      guideUrl: GUIDE_URLS[guide] || '#',
+      guide: primary,
+      guideLabel,
+      guideUrl: GUIDE_URLS[primary] || '#',
+      guideLinksHtml,
       marketingOptIn: yesNo(data.marketingOptIn),
       marketingOptInLabel: yesNo(data.marketingOptIn)
     };

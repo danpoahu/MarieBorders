@@ -180,12 +180,8 @@ const guideDownload_visitor = {
   enabled: true,
   subject: 'Your {{guideLabel}} — Marie Borders',
   bodyHtml: `<p>Hi {{firstName}},</p>
-<p>Thank you for downloading <strong>{{guideLabel}}</strong>. Here's your copy:</p>
-<p style="text-align:center;margin:32px 0;">
-  <a href="{{guideUrl}}" style="display:inline-block;padding:14px 28px;background:#a8854c;color:#fff;text-decoration:none;font-family:Inter,sans-serif;letter-spacing:0.1em;text-transform:uppercase;font-size:13px;">Download the Guide</a>
-</p>
-<p>If the button doesn't work, copy and paste this link into your browser:<br>
-<a href="{{guideUrl}}">{{guideUrl}}</a></p>
+<p>Thank you for requesting <strong>{{guideLabel}}</strong>. Here's your copy:</p>
+{{guideLinksHtml|raw}}
 <p>I hope it's useful. If you have questions as you read through it, I'd be glad to talk anytime — just reply to this email or call me at <a href="tel:+14156011715">(415) 601-1715</a>.</p>
 <p>Warmly,<br>Marie Borders</p>` + BRAND_FOOTER
 };
@@ -313,8 +309,9 @@ const templateMeta = {
     description: 'Delivers the PDF link to the visitor.',
     variables: [
       { key: 'firstName / name', desc: 'Visitor name' },
-      { key: 'guideLabel', desc: 'Buyer\'s Guide or Seller\'s Guide' },
-      { key: 'guideUrl', desc: 'Public URL to the gated PDF' }
+      { key: 'guideLabel', desc: 'Guide name(s) requested — combined if they asked for both' },
+      { key: 'guideLinksHtml | raw', desc: 'Ready-made link button(s), one per requested guide' },
+      { key: 'guideUrl', desc: 'URL of the primary guide (legacy single-link fallback)' }
     ]
   }
 };

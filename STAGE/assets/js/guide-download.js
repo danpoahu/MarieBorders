@@ -38,6 +38,11 @@
 
     document.getElementById('gd-title').textContent = 'Get ' + GUIDES[guide].label;
 
+    // Offer the *other* guide ("Buying and selling? Also send me…")
+    var other = guide === 'buyer' ? 'seller' : 'buyer';
+    var otherLabel = document.getElementById('gd-also-other-label');
+    if (otherLabel) otherLabel.textContent = 'Also send me the free ' + GUIDES[other].label + '.';
+
     // Reset
     var form = document.getElementById('gd-form');
     form.reset();
@@ -77,7 +82,8 @@
       name:  val('gd-name'),
       email: val('gd-email'),
       phone: val('gd-phone') || null,
-      marketingOptIn: !!document.getElementById('gd-marketingOptIn').checked
+      marketingOptIn: !!document.getElementById('gd-marketingOptIn').checked,
+      alsoOther: !!document.getElementById('gd-also-other').checked
     };
   }
 
@@ -141,10 +147,20 @@
       if (err) { showError(err); return; }
       if (!currentGuide) { showError('Missing guide context. Please close and try again.'); return; }
 
-      var payload = Object.assign({}, data, {
+      // Build the list of requested guides. `guide` (the one they clicked)
+      // stays for backward compatibility + the create rule; `guides` is the
+      // full set the Cloud Function emails.
+      var other = currentGuide === 'buyer' ? 'seller' : 'buyer';
+      var guides = data.alsoOther ? [currentGuide, other] : [currentGuide];
+      var payload = {
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        marketingOptIn: data.marketingOptIn,
         guide: currentGuide,
+        guides: guides,
         source: 'website-guide-download'
-      });
+      };
 
       var btn = document.getElementById('gd-submit-btn');
       btn.disabled = true;
@@ -154,10 +170,17 @@
         btn.disabled = false;
         btn.textContent = 'Send Me the Guide';
         if (result && result.ok) {
-          // Show success with immediate download link
-          var dl = document.getElementById('gd-download-link');
-          dl.href = GUIDES[currentGuide].url;
-          dl.textContent = 'Open ' + GUIDES[currentGuide].label;
+          // Show success with immediate download link(s) — one per requested guide
+          var wrap = document.getElementById('gd-download-links');
+          wrap.innerHTML = guides.map(function (g) {
+            return '<a class="gd-success__download" href="' + GUIDES[g].url + '" target="_blank" rel="noopener">Open the ' + GUIDES[g].label + '</a>';
+          }).join('');
+          var lede = document.getElementById('gd-success-lede');
+          if (lede) {
+            lede.innerHTML = guides.length > 1
+              ? 'Both guides are below &mdash; and a confirmation with both links has been sent to your inbox.'
+              : 'Your copy is below &mdash; and a confirmation has been sent to your inbox.';
+          }
           document.getElementById('gd-form-wrap').style.display = 'none';
           var s = document.getElementById('gd-success-wrap');
           s.style.display = 'block';

@@ -153,6 +153,31 @@
     flex-shrink: 0;
   }
 
+  .gd-both {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--s3);
+    margin: var(--s4) 0;
+    padding: var(--s3) var(--s4);
+    background: var(--paper-deep);
+    border: 1px solid var(--line, #e3dccd);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .gd-both input {
+    width: auto;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+  #gd-download-links {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--s3);
+  }
+
   .gd-error {
     color: #7a3134;
     background: rgba(122, 49, 52, 0.06);
@@ -313,6 +338,11 @@
           <input type="tel" id="gd-phone" autocomplete="tel">
         </div>
 
+        <label class="gd-both" id="gd-both-row">
+          <input type="checkbox" id="gd-also-other">
+          <span><strong>Buying and selling?</strong> <span id="gd-also-other-label">Also send me the other guide too &mdash; it's free.</span></span>
+        </label>
+
         <label class="gd-optin">
           <input type="checkbox" id="gd-marketingOptIn">
           <span>I'd like Marie's occasional Marin market notes (no spam, unsubscribe anytime).</span>
@@ -334,8 +364,8 @@
         </svg>
       </div>
       <h2>Here you go.</h2>
-      <p>Your copy is below &mdash; and a confirmation has been sent to your inbox.</p>
-      <a id="gd-download-link" class="gd-success__download" href="#" target="_blank" rel="noopener">Open the Guide</a>
+      <p id="gd-success-lede">Your copy is below &mdash; and a confirmation has been sent to your inbox.</p>
+      <div id="gd-download-links"></div>
       <p class="gd-success__note">
         Tip: once it opens, press <strong>Cmd+P</strong> (Mac) or <strong>Ctrl+P</strong> (Windows) to save as PDF.
       </p>
