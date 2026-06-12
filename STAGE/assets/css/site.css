@@ -302,8 +302,10 @@ p { margin-bottom: var(--s4); }
 .hero--small {
   min-height: 52vh;
 }
-/* Sub-page headers: match the mockup's page-header size (smaller than home) */
-.hero--small h1 {
+/* Sub-page headers: match the mockup's page-header size (smaller than home).
+   NOTE: needs `.hero.hero--small` (2 classes) to outrank `.hero h1` below —
+   both would otherwise tie on specificity and the later .hero h1 (4.6rem) wins. */
+.hero.hero--small h1 {
   font-size: clamp(1.6rem, 3.2vw, 2.4rem);
 }
 /* Home hero: nudge the headline block + buttons up a bit from dead-center */

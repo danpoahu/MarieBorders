@@ -82,10 +82,22 @@
     });
   }
 
-  // --- Stamp the current year into footer ---
+  // --- Stamp the current year + build version into the footer ---
+  // Bump SITE_VERSION on every deploy AND the ?v= on site.css/site.js in the
+  // HTML so a fresh load is guaranteed; the footer number tells you what you're
+  // actually seeing.
+  var SITE_VERSION = 'v1.7';
   function setupYearStamp() {
     document.querySelectorAll('[data-year]').forEach(function (el) {
       el.textContent = String(new Date().getFullYear());
+    });
+    document.querySelectorAll('.site-footer__strip').forEach(function (el) {
+      if (el.querySelector('.site-version')) return;
+      var v = document.createElement('span');
+      v.className = 'site-version';
+      v.style.cssText = 'margin-left:10px;opacity:0.55;font-size:0.85em;';
+      v.textContent = SITE_VERSION;
+      el.appendChild(v);
     });
   }
 

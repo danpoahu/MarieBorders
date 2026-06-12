@@ -1,0 +1,13 @@
+<!DOCTYPE html><html><head><link rel="stylesheet" href="assets/css/site.css"></head>
+<body>
+<section class="hero hero--small"><div class="hero__inner"><h1 id="sub">Get to Know Me</h1></div></section>
+<section class="hero"><div class="hero__inner"><h1 id="home">Marie Borders</h1></div></section>
+<div id="out" style="font:20px monospace;background:#fff;padding:8px"></div>
+<script>
+addEventListener('load',function(){
+  var sub=getComputedStyle(document.getElementById('sub')).fontSize;
+  var home=getComputedStyle(document.getElementById('home')).fontSize;
+  document.title='SUB='+sub+' HOME='+home;
+  document.getElementById('out').textContent='SUB='+sub+'  HOME='+home;
+});
+</script></body></html>
