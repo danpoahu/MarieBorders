@@ -605,7 +605,10 @@ async function transcodeToWebm(inputPath, outputPath, passLogPrefix, opts) {
 }
 
 exports.onListingVideoUploaded = onObjectFinalized(
-  { memory: '2GiB', timeoutSeconds: 540, region: 'us-central1' },
+  // Must match the Storage bucket's region (us-west1) — a Storage-triggered
+  // function cannot listen to a bucket in a different region. (The existing
+  // Firestore triggers stay in us-central1; that constraint is Storage-only.)
+  { memory: '2GiB', timeoutSeconds: 540, region: 'us-west1' },
   async (event) => {
     const object = event.data;
     const name = object && object.name;
