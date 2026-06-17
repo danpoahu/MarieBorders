@@ -541,13 +541,38 @@ exports.onGuideDownloadCreate = onDocumentCreated(
 const VIDEO_RAW_PREFIX = 'listing-video-raw/';
 const VIDEO_SIZE_CAP = 10 * 1024 * 1024; // 10,485,760 bytes — hard ceiling
 
-// Encode ladder, tried in order until the output fits under VIDEO_SIZE_CAP.
-const VIDEO_ENCODE_LADDER = [
-  { scaleHeight: 720, videoBitrate: '430k' },
-  { scaleHeight: 540, videoBitrate: '430k' },
-  { scaleHeight: 540, videoBitrate: '320k' },
-  { scaleHeight: 540, videoBitrate: '260k' }
-];
+// Two-pass file size is governed by BITRATE, not resolution. So instead of a
+// slow resolution-stepping ladder, derive the bitrate from the clip's actual
+// duration to land under the cap in a SINGLE encode. Target ~9 MB for margin.
+const VIDEO_TARGET_BYTES = 9.0 * 1024 * 1024;
+const AUDIO_BITRATE_K = 96;
+
+// Read duration (seconds) from the ffmpeg binary's stderr (ffmpeg-static ships
+// no ffprobe). `ffmpeg -i <file>` with no output exits non-zero but prints
+// "Duration: HH:MM:SS.ss" to stderr.
+function getVideoDurationSec(inputPath) {
+  return new Promise((resolve) => {
+    const proc = spawn(ffmpegPath, ['-hide_banner', '-i', inputPath], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = '';
+    proc.stderr.on('data', (d) => { err += d.toString(); });
+    proc.on('error', () => resolve(0));
+    proc.on('close', () => {
+      const m = err.match(/Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+      resolve(m ? (parseInt(m[1], 10) * 3600 + parseInt(m[2], 10) * 60 + parseFloat(m[3])) : 0);
+    });
+  });
+}
+
+// Pick bitrate (to hit the byte budget for this duration) and resolution
+// (720p only when we can afford ~450k+, else 540p — fewer pixels look better
+// when bits are scarce, e.g. a long tour).
+function computeEncodeParams(durationSec) {
+  const dur = durationSec > 0 ? durationSec : 150;
+  const totalKbps = (VIDEO_TARGET_BYTES * 8) / dur / 1000;
+  let vbr = Math.floor(totalKbps - AUDIO_BITRATE_K);
+  vbr = Math.max(180, Math.min(vbr, 1500));
+  return { scaleHeight: vbr >= 450 ? 720 : 540, videoBitrate: vbr + 'k' };
+}
 
 function runFfmpeg(args) {
   return new Promise((resolve, reject) => {
@@ -668,23 +693,22 @@ exports.onListingVideoUploaded = onObjectFinalized(
       // 1. Download the raw original.
       await rawFile.download({ destination: inputPath });
 
-      // 2. Transcode, stepping down the ladder until under the cap.
-      let chosenSize = null;
-      for (const opts of VIDEO_ENCODE_LADDER) {
-        await transcodeToWebm(inputPath, outputPath, passLogPrefix, opts);
-        const size = (await fsp.stat(outputPath)).size;
-        if (size < VIDEO_SIZE_CAP) {
-          chosenSize = size;
-          break;
-        }
-        console.warn(
-          '[onListingVideoUploaded] output', size, 'bytes >= cap at',
-          opts.scaleHeight + 'p/' + opts.videoBitrate + ', stepping down'
-        );
+      // 2. One encode at a duration-derived bitrate. Verify, and only if the
+      //    estimate overshot (rare) shave 20% and retry once.
+      const durationSec = await getVideoDurationSec(inputPath);
+      let params = computeEncodeParams(durationSec);
+      console.log('[onListingVideoUploaded] duration ' + Math.round(durationSec) + 's -> ' + params.scaleHeight + 'p/' + params.videoBitrate);
+      await transcodeToWebm(inputPath, outputPath, passLogPrefix, params);
+      let chosenSize = (await fsp.stat(outputPath)).size;
+      if (chosenSize >= VIDEO_SIZE_CAP) {
+        const fbVbr = Math.max(150, Math.floor(parseInt(params.videoBitrate, 10) * 0.8));
+        console.warn('[onListingVideoUploaded] ' + chosenSize + ' bytes over cap at ' + params.videoBitrate + ', retrying once at 540p/' + fbVbr + 'k');
+        params = { scaleHeight: 540, videoBitrate: fbVbr + 'k' };
+        await transcodeToWebm(inputPath, outputPath, passLogPrefix, params);
+        chosenSize = (await fsp.stat(outputPath)).size;
       }
-
-      if (chosenSize == null) {
-        throw new Error('Could not compress video under 10 MB even at the lowest quality setting. Please trim the video and try again.');
+      if (chosenSize >= VIDEO_SIZE_CAP) {
+        throw new Error('Could not compress under 10 MB. Please trim the video and try again.');
       }
 
       // 3. Upload the compressed result. Mint a Firebase download token so the
