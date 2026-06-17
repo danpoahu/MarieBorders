@@ -152,6 +152,14 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ---- VIDEO JOBS (CMS-only; CF writes results via admin SDK) ----
+    // The CMS creates a job doc and listens for the compress result; the
+    // onListingVideoUploaded function updates it (admin SDK, bypasses rules).
+
+    match /videoJobs/{jobId} {
+      allow read, write: if isAuthed();
+    }
+
     // ---- EMAIL LOG (CMS read; CF writes via admin SDK, bypasses rules) ----
 
     match /emailLog/{id} {

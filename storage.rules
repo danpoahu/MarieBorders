@@ -18,6 +18,19 @@ service firebase.storage {
         && (request.resource.contentType.matches('image/.*')
             || request.resource.contentType.matches('video/.*'));
     }
+    // Raw listing-video uploads awaiting server-side compression. The CMS
+    // uploads here; the onListingVideoUploaded function transcodes to a
+    // <10 MB WebM under listing-photos/ and deletes the raw original. Allow
+    // up to 200 MB of any video type (the function enforces the real cap).
+    match /listing-video-raw/{scopeId}/{file} {
+      // Marie uploads the raw original here; the transcode function (admin SDK)
+      // reads it server-side. Size/type checks only apply to writes — putting
+      // them on read would deny it (request.resource is null on reads).
+      allow read: if isAuthed();
+      allow write: if isAuthed()
+        && request.resource.size < 200 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+    }
     match /site/{file} {
       allow read: if true;
       allow write: if isAuthed();

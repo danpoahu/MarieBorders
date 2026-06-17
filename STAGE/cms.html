@@ -1538,8 +1538,8 @@
       <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Listing Video</h3>
       <label class="dropzone" id="listing-video-dropzone">
         <span>Drop a video here, or click to browse</span>
-        <span class="dropzone__note">MP4 or WebM, up to 10 MB (keep it to about 3 minutes). Plays first on the listing page and autoplays muted. Optional.</span>
-        <input type="file" id="listing-video-input" accept="video/mp4,video/webm">
+        <span class="dropzone__note">MP4, MOV, or WebM, up to 200 MB. It is compressed automatically for the web (keep it to about 3 minutes). Plays first on the listing page and autoplays muted. Optional.</span>
+        <input type="file" id="listing-video-input" accept="video/mp4,video/quicktime,video/webm">
       </label>
       <div id="listing-video-progress" class="upload-progress"></div>
       <div id="listing-video-strip"></div>
@@ -2042,6 +2042,7 @@ function openListingDrawer(id) {
   drawerFeatures = [];
 
   // Reset uploaders
+  if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) { /* tolerate */ } videoJobUnsub = null; }
   document.getElementById('listing-video-progress').innerHTML = '';
 
   // Reset open houses
@@ -2396,7 +2397,8 @@ function renderPhotoStrip() {
 }
 
 /* ----- Listing video upload ----- */
-const VIDEO_MAX_BYTES = 10 * 1024 * 1024; // 10 MB hard cap
+const VIDEO_MAX_BYTES = 200 * 1024 * 1024; // 200 MB uploader cap (server compresses to <10 MB)
+let videoJobUnsub = null; // active onSnapshot unsubscribe for the in-flight compress job
 const videoDropzone = document.getElementById('listing-video-dropzone');
 const videoInput = document.getElementById('listing-video-input');
 const videoStrip = document.getElementById('listing-video-strip');
@@ -2413,13 +2415,19 @@ videoInput.addEventListener('change', (e) => {
   videoInput.value = ''; // allow re-selecting the same file after a remove
 });
 
+const VIDEO_EXT_BY_TYPE = {
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm'
+};
+
 async function handleVideoFile(file) {
-  if (!/^video\/(mp4|webm)$/.test(file.type)) {
-    toast('Please upload an MP4 or WebM video.', { error: true });
+  if (!VIDEO_EXT_BY_TYPE[file.type]) {
+    toast('Please upload an MP4, MOV, or WebM video.', { error: true });
     return;
   }
   if (file.size > VIDEO_MAX_BYTES) {
-    toast('Video is ' + (file.size / 1048576).toFixed(1) + ' MB — the limit is 10 MB. Please compress it (about 3 minutes).', { error: true });
+    toast('Video is ' + (file.size / 1048576).toFixed(1) + ' MB — the limit is 200 MB.', { error: true });
     return;
   }
 
@@ -2428,6 +2436,9 @@ async function handleVideoFile(file) {
   }
   const scopeId = drawerEditingId || window._tempListingId;
   markDrawerDirty();
+
+  // Tear down any prior in-flight compress job before starting a new one.
+  if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) { /* tolerate */ } videoJobUnsub = null; }
 
   const oldPath = drawerVideo && drawerVideo.storagePath;
 
@@ -2439,10 +2450,23 @@ async function handleVideoFile(file) {
   const pct  = item.querySelector('.pct');
 
   try {
-    const ext = file.type === 'video/webm' ? 'webm' : 'mp4';
-    const path = 'listing-photos/' + scopeId + '/video-' + uuid() + '.' + ext;
-    const ref = storageRef(storage, path);
-    const task = uploadBytesResumable(ref, file, { contentType: file.type });
+    // 1. Create the job doc so the function has somewhere to report back.
+    const jobId = uuid();
+    const jobRef = doc(collection(db, 'videoJobs'), jobId);
+    await setDoc(jobRef, {
+      status: 'processing',
+      scopeId,
+      createdAt: serverTimestamp()
+    });
+
+    // 2. Upload the raw original; the function triggers on this path prefix.
+    const ext = VIDEO_EXT_BY_TYPE[file.type] || 'mp4';
+    const rawPath = 'listing-video-raw/' + scopeId + '/' + jobId + '.' + ext;
+    const ref = storageRef(storage, rawPath);
+    const task = uploadBytesResumable(ref, file, {
+      contentType: file.type,
+      customMetadata: { jobId, scopeId }
+    });
     await new Promise((resolve, reject) => {
       task.on('state_changed', (snap) => {
         const p = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
@@ -2450,14 +2474,38 @@ async function handleVideoFile(file) {
         pct.textContent = p + '%';
       }, reject, resolve);
     });
-    const url = await getDownloadURL(task.snapshot.ref);
-    drawerVideo = { url, storagePath: path };
-    // Replacing an existing video — clean up the old file
-    if (oldPath && oldPath !== path) {
-      try { await deleteObject(storageRef(storage, oldPath)); } catch (e) { /* tolerate */ }
-    }
-    renderVideoStrip();
-    item.remove();
+
+    // 3. Upload done — now the server is compressing. Show that state and
+    //    listen for the job result. Replacing an existing video happens once
+    //    the new one resolves (below), so the old preview stays until then.
+    item.querySelector('span:last-child').textContent = '';
+    pct.textContent = 'Compressing video…';
+    fill.style.width = '100%';
+
+    videoJobUnsub = onSnapshot(jobRef, (snap) => {
+      if (!snap.exists()) return;
+      const job = snap.data() || {};
+      if (job.status === 'done') {
+        drawerVideo = { url: job.url, storagePath: job.storagePath };
+        // Clean up the previously-saved compressed file we're replacing.
+        if (oldPath && oldPath !== job.storagePath) {
+          deleteObject(storageRef(storage, oldPath)).catch(() => { /* tolerate */ });
+        }
+        renderVideoStrip();
+        item.remove();
+        markDrawerDirty();
+        if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) {} videoJobUnsub = null; }
+      } else if (job.status === 'error') {
+        toast('Video processing failed: ' + (job.message || 'unknown error'), { error: true });
+        item.remove();
+        if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) {} videoJobUnsub = null; }
+      }
+    }, (err) => {
+      console.warn('video job listener failed', err);
+      toast('Lost connection to the video processor: ' + (err.message || ''), { error: true });
+      item.remove();
+      if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) {} videoJobUnsub = null; }
+    });
   } catch (err) {
     pct.textContent = 'failed';
     console.warn('video upload failed', err);

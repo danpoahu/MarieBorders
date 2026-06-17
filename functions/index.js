@@ -31,11 +31,21 @@
 'use strict';
 
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
+const { onObjectFinalized } = require('firebase-functions/v2/storage');
 const { defineSecret } = require('firebase-functions/params');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getStorage } = require('firebase-admin/storage');
 const { Resend } = require('resend');
+
+const { spawn } = require('node:child_process');
+const fs = require('node:fs');
+const fsp = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const ffmpegPath = require('ffmpeg-static');
 
 const { render, renderText, stripHtml, escapeHtml } = require('./lib/template');
 const fmt = require('./lib/formatters');
@@ -506,5 +516,213 @@ exports.onGuideDownloadCreate = onDocumentCreated(
       vars,
       visitorEmail: data.email
     });
+  }
+);
+
+// ============================================================
+//  LISTING VIDEO AUTO-COMPRESS
+// ============================================================
+//
+// The CMS uploads a raw MP4/MOV/WebM to `listing-video-raw/{scopeId}/{jobId}.{ext}`
+// (with custom metadata jobId + scopeId) and writes a `videoJobs/{jobId}` doc
+// with status:'processing'. This function:
+//   1. transcodes to a web-friendly VP9/WebM (720p, two-pass, libopus audio),
+//   2. guarantees the output stays under the site's 10 MB cap (stepping down
+//      resolution / bitrate as needed),
+//   3. uploads the result to `listing-photos/{scopeId}/video-{uuid}.webm`,
+//   4. deletes the raw original,
+//   5. reports back on the job doc (status:'done' with url+storagePath, or
+//      status:'error' with a message).
+//
+// Only objects under `listing-video-raw/` are processed — everything else
+// returns immediately (including our own `listing-photos/` output, so there's
+// no retrigger loop). Idempotent: a job already marked 'done' is skipped.
+
+const VIDEO_RAW_PREFIX = 'listing-video-raw/';
+const VIDEO_SIZE_CAP = 10 * 1024 * 1024; // 10,485,760 bytes — hard ceiling
+
+// Encode ladder, tried in order until the output fits under VIDEO_SIZE_CAP.
+const VIDEO_ENCODE_LADDER = [
+  { scaleHeight: 720, videoBitrate: '430k' },
+  { scaleHeight: 540, videoBitrate: '430k' },
+  { scaleHeight: 540, videoBitrate: '320k' },
+  { scaleHeight: 540, videoBitrate: '260k' }
+];
+
+function runFfmpeg(args) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn(ffmpegPath, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    let stderr = '';
+    proc.stderr.on('data', (d) => {
+      // Keep only the tail — ffmpeg is chatty and stderr can be large.
+      stderr = (stderr + d.toString()).slice(-4000);
+    });
+    proc.on('error', reject);
+    proc.on('close', (code) => {
+      if (code === 0) resolve();
+      else reject(new Error('ffmpeg exited with code ' + code + (stderr ? ': ' + stderr.trim() : '')));
+    });
+  });
+}
+
+/**
+ * Two-pass VP9/WebM transcode. Pass 1 analyses (discards output to null,
+ * audio dropped); pass 2 writes the real file. Both share a passlogfile.
+ */
+async function transcodeToWebm(inputPath, outputPath, passLogPrefix, opts) {
+  const { scaleHeight, videoBitrate } = opts;
+  const vf = 'scale=-2:' + scaleHeight;
+  const common = [
+    '-hide_banner', '-y',
+    '-i', inputPath,
+    '-c:v', 'libvpx-vp9',
+    '-b:v', videoBitrate,
+    '-vf', vf,
+    '-row-mt', '1',
+    '-deadline', 'good',
+    '-cpu-used', '1',
+    '-passlogfile', passLogPrefix
+  ];
+
+  // Pass 1 — analyse only, no audio, discard output.
+  await runFfmpeg([
+    ...common,
+    '-pass', '1',
+    '-an',
+    '-f', 'null',
+    os.platform() === 'win32' ? 'NUL' : '/dev/null'
+  ]);
+
+  // Pass 2 — real encode with Opus audio.
+  await runFfmpeg([
+    ...common,
+    '-pass', '2',
+    '-c:a', 'libopus',
+    '-b:a', '96k',
+    '-f', 'webm',
+    outputPath
+  ]);
+}
+
+exports.onListingVideoUploaded = onObjectFinalized(
+  { memory: '2GiB', timeoutSeconds: 540, region: 'us-central1' },
+  async (event) => {
+    const object = event.data;
+    const name = object && object.name;
+
+    // Guard: only raw listing-video uploads. Ignore everything else (incl. our
+    // own compressed output) so we never retrigger ourselves.
+    if (!name || !name.startsWith(VIDEO_RAW_PREFIX)) return;
+
+    // Resolve jobId / scopeId — prefer custom metadata, fall back to the path
+    // (listing-video-raw/{scopeId}/{jobId}.{ext}).
+    const meta = (object.metadata && object.metadata) || {};
+    const rel = name.slice(VIDEO_RAW_PREFIX.length);          // {scopeId}/{jobId}.{ext}
+    const firstSlash = rel.indexOf('/');
+    const pathScopeId = firstSlash >= 0 ? rel.slice(0, firstSlash) : '';
+    const fileName = firstSlash >= 0 ? rel.slice(firstSlash + 1) : rel;
+    const pathJobId = fileName.replace(/\.[^.]+$/, '');
+
+    const scopeId = meta.scopeId || pathScopeId;
+    const jobId = meta.jobId || pathJobId;
+
+    const bucket = getStorage().bucket(object.bucket);
+    const rawFile = bucket.file(name);
+    const jobRef = jobId ? db.collection('videoJobs').doc(jobId) : null;
+
+    if (!jobRef) {
+      console.error('[onListingVideoUploaded] could not resolve jobId for', name);
+      await rawFile.delete({ ignoreNotFound: true }).catch(() => {});
+      return;
+    }
+
+    // Idempotency: a re-fire on the same object no-ops if already done.
+    try {
+      const jobSnap = await jobRef.get();
+      if (jobSnap.exists && jobSnap.data() && jobSnap.data().status === 'done') {
+        console.log('[onListingVideoUploaded] job already done, skipping', jobId);
+        return;
+      }
+    } catch (err) {
+      console.warn('[onListingVideoUploaded] job read failed', jobId, err && err.message);
+    }
+
+    const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'lvid-'));
+    const inputPath = path.join(tmpDir, 'input');
+    const outputPath = path.join(tmpDir, 'output.webm');
+    const passLogPrefix = path.join(tmpDir, 'ffpass');
+
+    async function cleanupTmp() {
+      await fsp.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+    }
+
+    try {
+      // 1. Download the raw original.
+      await rawFile.download({ destination: inputPath });
+
+      // 2. Transcode, stepping down the ladder until under the cap.
+      let chosenSize = null;
+      for (const opts of VIDEO_ENCODE_LADDER) {
+        await transcodeToWebm(inputPath, outputPath, passLogPrefix, opts);
+        const size = (await fsp.stat(outputPath)).size;
+        if (size < VIDEO_SIZE_CAP) {
+          chosenSize = size;
+          break;
+        }
+        console.warn(
+          '[onListingVideoUploaded] output', size, 'bytes >= cap at',
+          opts.scaleHeight + 'p/' + opts.videoBitrate + ', stepping down'
+        );
+      }
+
+      if (chosenSize == null) {
+        throw new Error('Could not compress video under 10 MB even at the lowest quality setting. Please trim the video and try again.');
+      }
+
+      // 3. Upload the compressed result. Mint a Firebase download token so the
+      //    public URL matches what the CMS client's getDownloadURL() produces.
+      const outId = crypto.randomUUID();
+      const destPath = 'listing-photos/' + scopeId + '/video-' + outId + '.webm';
+      const token = crypto.randomUUID();
+      await bucket.upload(outputPath, {
+        destination: destPath,
+        metadata: {
+          contentType: 'video/webm',
+          metadata: { firebaseStorageDownloadTokens: token }
+        }
+      });
+
+      const url =
+        'https://firebasestorage.googleapis.com/v0/b/' + bucket.name +
+        '/o/' + encodeURIComponent(destPath) +
+        '?alt=media&token=' + token;
+
+      // 4. Delete the raw original.
+      await rawFile.delete({ ignoreNotFound: true }).catch((e) => {
+        console.warn('[onListingVideoUploaded] raw delete failed', e && e.message);
+      });
+
+      // 5. Report success.
+      await jobRef.set({
+        status: 'done',
+        url,
+        storagePath: destPath,
+        finishedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      console.log('[onListingVideoUploaded] done', jobId, chosenSize, 'bytes ->', destPath);
+    } catch (err) {
+      const message = err && err.message ? err.message : String(err);
+      console.error('[onListingVideoUploaded] failed', jobId, message);
+      // On any failure: still delete the raw original and mark the job errored.
+      await rawFile.delete({ ignoreNotFound: true }).catch(() => {});
+      try {
+        await jobRef.set({ status: 'error', message }, { merge: true });
+      } catch (e) {
+        console.error('[onListingVideoUploaded] could not write error status', e && e.message);
+      }
+    } finally {
+      await cleanupTmp();
+    }
   }
 );

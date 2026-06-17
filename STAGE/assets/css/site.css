@@ -697,13 +697,28 @@ p { margin-bottom: var(--s4); }
   z-index: 2;
 }
 .gallery__thumbs {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
   gap: var(--s3);
   margin-top: var(--s4);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+  /* fade the right/left edges to hint that the rail scrolls */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
+          mask-image: linear-gradient(to right, transparent 0, #000 18px, #000 calc(100% - 18px), transparent 100%);
 }
+.gallery__thumbs::-webkit-scrollbar { height: 6px; }
+.gallery__thumbs::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.25); border-radius: 3px; }
+.gallery__thumbs::-webkit-scrollbar-track { background: transparent; }
 .gallery__thumb {
+  flex: 0 0 84px;
   aspect-ratio: 1 / 1;
+  scroll-snap-align: center;
   background: var(--hush);
   border-radius: 2px;
   overflow: hidden;
