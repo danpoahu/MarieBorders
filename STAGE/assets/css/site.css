@@ -825,6 +825,35 @@ p { margin-bottom: var(--s4); }
 
 .detail-section { margin-bottom: var(--s7); }
 .detail-section h2 { font-size: 1.5rem; margin-bottom: var(--s4); }
+
+/* Rich-text listing description (rendered from CMS Trix HTML or legacy plain text) */
+.detail-description p { margin: 0 0 0.9em; }
+.detail-description p:last-child { margin-bottom: 0; }
+.detail-description h1,
+.detail-description h2,
+.detail-description h3 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  margin: 1.2em 0 0.5em;
+  line-height: 1.25;
+}
+.detail-description h1 { font-size: 1.5rem; }
+.detail-description h2 { font-size: 1.3rem; }
+.detail-description h3 { font-size: 1.12rem; }
+.detail-description ul,
+.detail-description ol { margin: 0 0 0.9em; padding-left: 1.4em; }
+.detail-description li { margin-bottom: 0.3em; }
+.detail-description blockquote {
+  margin: 0 0 0.9em;
+  padding-left: var(--s4);
+  border-left: 3px solid var(--accent);
+  color: var(--ink-soft);
+  font-style: italic;
+}
+.detail-description strong { font-weight: 600; color: var(--ink); }
+.detail-description em { font-style: italic; }
+.detail-description a { color: var(--accent-deep); text-decoration: underline; }
+.detail-description a:hover { color: var(--accent); }
 .feature-list {
   display: grid;
   grid-template-columns: 1fr;

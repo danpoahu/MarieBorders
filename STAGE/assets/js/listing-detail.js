@@ -6,6 +6,48 @@
   'use strict';
   window.MB = window.MB || {};
 
+  /* ---- Rich-text description helper ----
+   * Descriptions may be HTML (authored in the CMS Trix editor) or legacy
+   * plain text (older listings). This returns sanitized HTML safe to inject.
+   */
+  function escapeText(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+  function looksLikeHtml(s) {
+    return /<\/?[a-z][\s\S]*>/i.test(String(s));
+  }
+  // Strip <script>/<style> blocks and inline on*= handlers from trusted-but-cautious HTML.
+  function sanitizeHtml(html) {
+    return String(html)
+      .replace(/<\s*(script|style)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
+      .replace(/<\s*(script|style)\b[^>]*\/?>/gi, '')
+      .replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '')
+      .replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '')
+      .replace(/\son[a-z]+\s*=\s*[^\s>]+/gi, '');
+  }
+  // Convert legacy plain text into paragraphs (blank-line blocks) + <br> (single newlines).
+  function plainTextToHtml(text) {
+    var normalized = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    var blocks = normalized.split(/\n{2,}/);
+    return blocks
+      .map(function (block) {
+        var trimmed = block.replace(/^\n+|\n+$/g, '');
+        if (!trimmed) return '';
+        return '<p>' + escapeText(trimmed).replace(/\n/g, '<br>') + '</p>';
+      })
+      .filter(Boolean)
+      .join('');
+  }
+  function descriptionToHtml(value) {
+    var v = String(value == null ? '' : value);
+    if (!v.trim()) return '';
+    return looksLikeHtml(v) ? sanitizeHtml(v) : plainTextToHtml(v);
+  }
+
   function fmtDate(iso) {
     if (!iso) return '';
     try {
@@ -240,8 +282,9 @@
 
     // Description
     var descEl = document.getElementById('detail-description');
-    if (listing.description) {
-      descEl.textContent = listing.description;
+    var descHtml = descriptionToHtml(listing.description);
+    if (descHtml) {
+      descEl.innerHTML = descHtml;
     } else {
       descEl.closest('.detail-section').style.display = 'none';
     }

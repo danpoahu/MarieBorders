@@ -19,10 +19,35 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/site.css?v=1.8">
+<link rel="stylesheet" href="assets/css/site.css?v=1.9">
+<!-- Trix rich-text editor (listing Description field) -->
+<link rel="stylesheet" href="https://unpkg.com/trix@2.1.15/dist/trix.css">
+<script defer src="https://unpkg.com/trix@2.1.15/dist/trix.umd.min.js"></script>
 <style>
   /* ---- CMS-specific overrides ---- */
   body { background: var(--paper-deep); font-size: 15px; }
+
+  /* ---- Trix rich-text editor (listing Description) — match .field inputs ---- */
+  .field trix-toolbar { margin-bottom: var(--s2); }
+  .field trix-editor {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    padding: var(--s3) var(--s4);
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    color: var(--ink);
+    width: 100%;
+    min-height: 160px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field trix-editor:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(168, 133, 76, 0.15);
+  }
+  .field trix-editor h1 { font-size: 1.3rem; }
+  .field trix-editor p { margin: 0 0 0.6em; }
 
   .cms-shell { display: none; }
   .cms-shell.is-ready { display: block; }
@@ -1497,7 +1522,8 @@
 
       <div class="field" style="margin-top:var(--s4);">
         <label for="listing-description">Description</label>
-        <textarea id="listing-description" rows="6"></textarea>
+        <input id="listing-description" type="hidden">
+        <trix-editor id="listing-description-editor" input="listing-description" class="trix-content"></trix-editor>
       </div>
 
       <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Features</h3>
@@ -1628,6 +1654,76 @@ function toast(msg, opts) {
   toastEl.classList.add('is-visible');
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toastEl.classList.remove('is-visible'), 2000);
+}
+
+/* ===========================================================
+   Listing Description — rich text (Trix) helpers
+   Legacy descriptions are plain text with newlines; convert them
+   to HTML so paragraphs survive when loaded into the Trix editor.
+   The public listing page uses an equivalent helper to render.
+   =========================================================== */
+function descEscapeText(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function descLooksLikeHtml(s) {
+  return /<\/?[a-z][\s\S]*>/i.test(String(s));
+}
+// Convert legacy plain text: blank-line blocks -> <div>, single newlines -> <br>.
+// Trix uses <div> for block separation; this round-trips cleanly in the editor.
+function descPlainTextToHtml(text) {
+  const normalized = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  return normalized.split(/\n{2,}/)
+    .map(block => {
+      const trimmed = block.replace(/^\n+|\n+$/g, '');
+      if (!trimmed) return '';
+      return '<div>' + descEscapeText(trimmed).replace(/\n/g, '<br>') + '</div>';
+    })
+    .filter(Boolean)
+    .join('');
+}
+function descToEditorHtml(value) {
+  const v = String(value == null ? '' : value);
+  if (!v.trim()) return '';
+  return descLooksLikeHtml(v) ? v : descPlainTextToHtml(v);
+}
+// Set true while we programmatically load the editor so the resulting
+// trix-change event doesn't flag the drawer as dirty.
+let descLoadingProgrammatically = false;
+// Load HTML into the Trix editor, handling async element upgrade.
+function loadDescriptionIntoEditor(value) {
+  const html = descToEditorHtml(value);
+  const ed = document.getElementById('listing-description-editor');
+  const hidden = document.getElementById('listing-description');
+  if (!ed) return;
+  descLoadingProgrammatically = true;
+  const apply = () => {
+    if (ed.editor) {
+      ed.editor.loadHTML(html || '');
+      // Release the guard after the trix-change has had a chance to fire.
+      setTimeout(() => { descLoadingProgrammatically = false; }, 0);
+    } else {
+      // Editor not yet upgraded — retry on next tick.
+      setTimeout(apply, 30);
+    }
+  };
+  // Keep the hidden input in sync immediately as a fallback.
+  if (hidden) hidden.value = html || '';
+  apply();
+}
+// Read the editor's current HTML for saving. Trix mirrors HTML into the hidden
+// input's .value. Treat an empty/blank editor as an empty string.
+function readDescriptionHtml() {
+  const ed = document.getElementById('listing-description-editor');
+  const hidden = document.getElementById('listing-description');
+  let html = (ed && ed.editor) ? ed.value : (hidden ? hidden.value : '');
+  html = String(html || '');
+  // Trix represents an empty document as <div><br></div> / whitespace — normalize to ''.
+  const textOnly = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+  return textOnly ? html : '';
 }
 
 /* ===========================================================
@@ -1938,6 +2034,8 @@ function openListingDrawer(id) {
   const f = document.getElementById('listing-form');
   f.reset();
   document.getElementById('listing-state').value = 'CA';
+  // f.reset() doesn't clear the Trix editor (custom element) — clear it explicitly.
+  loadDescriptionIntoEditor('');
 
   drawerPhotos = [];
   drawerVideo = null;
@@ -1971,7 +2069,7 @@ function openListingDrawer(id) {
     document.getElementById('listing-yearBuilt').value = l.yearBuilt || '';
     document.getElementById('listing-lotSize').value = l.lotSize || '';
     document.getElementById('listing-mlsNumber').value = l.mlsNumber || '';
-    document.getElementById('listing-description').value = l.description || '';
+    loadDescriptionIntoEditor(l.description || '');
     document.getElementById('listing-slug').value = l.slug || '';
     drawerSlugManuallyEdited = true; // assume existing slug is canon
 
@@ -2010,6 +2108,11 @@ drawerBackdrop.addEventListener('click', () => closeListingDrawer(false));
 // Track dirty across all drawer inputs
 document.getElementById('listing-form').addEventListener('input', markDrawerDirty);
 document.getElementById('listing-form').addEventListener('change', markDrawerDirty);
+// Trix fires trix-change (not a standard input event) — track it for dirty state,
+// but ignore the change caused by programmatically loading a listing.
+document.getElementById('listing-description-editor').addEventListener('trix-change', () => {
+  if (!descLoadingProgrammatically) markDrawerDirty();
+});
 
 // Status -> sold price visibility
 document.getElementById('listing-status').addEventListener('change', updateSoldPriceVisibility);
@@ -2436,7 +2539,7 @@ async function saveListing() {
     lotSize: document.getElementById('listing-lotSize').value.trim() || null,
     yearBuilt: parseNum('listing-yearBuilt'),
     mlsNumber: document.getElementById('listing-mlsNumber').value.trim() || null,
-    description: document.getElementById('listing-description').value.trim() || '',
+    description: readDescriptionHtml(),
     features: drawerFeatures.slice(),
     photos: drawerPhotos.slice(),
     video: drawerVideo ? { url: drawerVideo.url, storagePath: drawerVideo.storagePath } : null,
