@@ -86,7 +86,7 @@
   // Bump SITE_VERSION on every deploy AND the ?v= on site.css/site.js in the
   // HTML so a fresh load is guaranteed; the footer number tells you what you're
   // actually seeing.
-  var SITE_VERSION = 'v2.3';
+  var SITE_VERSION = 'v2.4';
   function setupYearStamp() {
     document.querySelectorAll('[data-year]').forEach(function (el) {
       el.textContent = String(new Date().getFullYear());
