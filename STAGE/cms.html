@@ -1066,7 +1066,7 @@
 <!-- ============ CMS SHELL ============ -->
 <div id="cms-shell" class="cms-shell">
   <div class="cms-bar">
-    <div class="cms-bar__brand">Marie Borders CMS<span class="cms-bar__ver">v2.2</span></div>
+    <div class="cms-bar__brand">Marie Borders CMS<span class="cms-bar__ver">v2.3</span></div>
     <div class="cms-bar__user">
       <span>Signed in as <strong id="cms-user-email">—</strong></span>
       <button id="cms-signout-btn" type="button">Sign Out</button>
@@ -2048,7 +2048,7 @@ function openListingDrawer(id) {
 
   drawerPhotos = [];
   drawerVideo = null;
-  drawerFeatures = [];
+  drawerFeatures.length = 0; // mutate in place — the feature chip widget holds this exact array by reference
 
   // Reset uploaders
   if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) { /* tolerate */ } videoJobUnsub = null; }
@@ -2083,7 +2083,8 @@ function openListingDrawer(id) {
     document.getElementById('listing-slug').value = l.slug || '';
     drawerSlugManuallyEdited = true; // assume existing slug is canon
 
-    drawerFeatures = Array.isArray(l.features) ? l.features.slice() : [];
+    drawerFeatures.length = 0; // keep the same array reference (see makeChipInput)
+    if (Array.isArray(l.features)) drawerFeatures.push(...l.features);
     drawerPhotos = Array.isArray(l.photos) ? JSON.parse(JSON.stringify(l.photos)) : [];
     drawerVideo = (l.video && l.video.url) ? JSON.parse(JSON.stringify(l.video)) : null;
 
