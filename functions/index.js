@@ -579,10 +579,10 @@ async function transcodeToWebm(inputPath, outputPath, passLogPrefix, opts) {
     '-b:v', videoBitrate,
     '-vf', vf,
     '-row-mt', '1',
-    '-tile-columns', '2',
-    '-threads', '4',
+    '-tile-columns', '3',
+    '-threads', '8',
     '-deadline', 'good',
-    '-cpu-used', '2',
+    '-cpu-used', '4',
     '-passlogfile', passLogPrefix
   ];
 
@@ -610,10 +610,10 @@ exports.onListingVideoUploaded = onObjectFinalized(
   // Must match the Storage bucket's region (us-west1) — a Storage-triggered
   // function cannot listen to a bucket in a different region. (The existing
   // Firestore triggers stay in us-central1; that constraint is Storage-only.)
-  // 4 vCPU + tiled/threaded VP9 so the two-pass encode finishes in ~1-2 min
-  // (1 vCPU was 5+ min and risked the 540s timeout). Cost stays negligible at
-  // ~2 transcodes/month.
-  { memory: '4GiB', cpu: 4, timeoutSeconds: 540, region: 'us-west1' },
+  // 8 vCPU + cpu-used 4 + 8-way tiling so libvpx VP9 (inherently slow) finishes
+  // a ~3-min tour in ~1.5-2.5 min, well inside the 540s timeout. 1 vCPU/cpu-used 1
+  // was 5-6+ min and timed out. Cost is still negligible at ~2 transcodes/month.
+  { memory: '8GiB', cpu: 8, timeoutSeconds: 540, region: 'us-west1' },
   async (event) => {
     const object = event.data;
     const name = object && object.name;
