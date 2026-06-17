@@ -67,6 +67,15 @@
     font-size: 1.4rem;
     color: #fff;
   }
+  .cms-bar__ver {
+    margin-left: 9px;
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.5);
+    vertical-align: middle;
+  }
   .cms-bar__user { font-size: 0.85rem; color: rgba(255,255,255,0.72); }
   .cms-bar__user button {
     background: transparent;
@@ -1057,7 +1066,7 @@
 <!-- ============ CMS SHELL ============ -->
 <div id="cms-shell" class="cms-shell">
   <div class="cms-bar">
-    <div class="cms-bar__brand">Marie Borders CMS</div>
+    <div class="cms-bar__brand">Marie Borders CMS<span class="cms-bar__ver">v2.2</span></div>
     <div class="cms-bar__user">
       <span>Signed in as <strong id="cms-user-email">—</strong></span>
       <button id="cms-signout-btn" type="button">Sign Out</button>
