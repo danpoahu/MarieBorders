@@ -716,7 +716,7 @@ p { margin-bottom: var(--s4); }
 .gallery__thumbs::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.25); border-radius: 3px; }
 .gallery__thumbs::-webkit-scrollbar-track { background: transparent; }
 .gallery__thumb {
-  flex: 0 0 84px;
+  flex: 0 0 50px;
   aspect-ratio: 1 / 1;
   scroll-snap-align: center;
   background: var(--hush);
