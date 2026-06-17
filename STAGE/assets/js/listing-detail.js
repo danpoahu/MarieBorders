@@ -139,13 +139,8 @@
       wireMain();
       if (thumbsEl) {
         thumbsEl.querySelectorAll('.gallery__thumb').forEach(function (btn, i) {
-          var isActive = i === current;
-          btn.classList.toggle('is-active', isActive);
-          btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-          // Keep the active thumb visible in the single-line scroll rail.
-          if (isActive) {
-            btn.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-          }
+          btn.classList.toggle('is-active', i === current);
+          btn.setAttribute('aria-pressed', i === current ? 'true' : 'false');
         });
       }
     }
