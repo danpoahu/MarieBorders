@@ -855,24 +855,23 @@ p { margin-bottom: var(--s4); }
 .detail-description a { color: var(--accent-deep); text-decoration: underline; }
 .detail-description a:hover { color: var(--accent); }
 .feature-list {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--s2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
   list-style: none;
   padding: 0;
+  margin: 0;
 }
-@media (min-width: 600px) { .feature-list { grid-template-columns: 1fr 1fr; } }
 .feature-list li {
-  padding-left: var(--s4);
-  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.95rem;
+  background: var(--paper-deep);
+  border: 1px solid var(--hush);
+  border-radius: 999px;
+  font-size: 0.9rem;
   color: var(--ink-soft);
-}
-.feature-list li::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0.7em;
-  width: 8px; height: 1px;
-  background: var(--accent);
+  letter-spacing: 0.01em;
 }
 .open-houses {
   list-style: none; padding: 0;
