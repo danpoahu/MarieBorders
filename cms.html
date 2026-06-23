@@ -1,0 +1,3525 @@
+<!DOCTYPE html>
+<!--
+  Marie Borders — Content Management System (Phase 3)
+
+  Auth-gated single-page admin for Marie. Edits Firestore `listings` +
+  `siteContent/{home,about,contact}` and uploads photos to Cloud Storage.
+
+  Auth: Email/Password. Marie's user is created manually by Daniel in the
+  Firebase Console. The Firestore rules + Storage rules require an
+  authenticated user for any write; reads on listings + siteContent are
+  public so the marketing site can render without auth.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>Marie Borders CMS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css?v=2.4">
+<!-- Trix rich-text editor (listing Description field) -->
+<link rel="stylesheet" href="https://unpkg.com/trix@2.1.15/dist/trix.css">
+<script defer src="https://unpkg.com/trix@2.1.15/dist/trix.umd.min.js"></script>
+<style>
+  /* ---- CMS-specific overrides ---- */
+  body { background: var(--paper-deep); font-size: 15px; }
+
+  /* ---- Trix rich-text editor (listing Description) — match .field inputs ---- */
+  .field trix-toolbar { margin-bottom: var(--s2); }
+  .field trix-editor {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    padding: var(--s3) var(--s4);
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    color: var(--ink);
+    width: 100%;
+    min-height: 160px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field trix-editor:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(168, 133, 76, 0.15);
+  }
+  .field trix-editor h1 { font-size: 1.3rem; }
+  .field trix-editor p { margin: 0 0 0.6em; }
+
+  .cms-shell { display: none; }
+  .cms-shell.is-ready { display: block; }
+
+  .cms-bar {
+    background: var(--ink);
+    color: #fff;
+    padding: var(--s4) var(--s5);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+    flex-wrap: wrap;
+  }
+  .cms-bar__brand {
+    font-family: var(--font-serif);
+    font-size: 1.4rem;
+    color: #fff;
+  }
+  .cms-bar__ver {
+    margin-left: 9px;
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.5);
+    vertical-align: middle;
+  }
+  .cms-bar__user { font-size: 0.85rem; color: rgba(255,255,255,0.72); }
+  .cms-bar__user button {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.4);
+    color: #fff;
+    padding: var(--s2) var(--s4);
+    margin-left: var(--s3);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+  .cms-bar__user button:hover { background: rgba(255,255,255,0.12); }
+
+  .cms-tabs {
+    background: #fff;
+    border-bottom: 1px solid var(--hush);
+    display: flex;
+    overflow-x: auto;
+    padding: 0 var(--s5);
+  }
+  .cms-tab {
+    background: transparent;
+    border: 0;
+    padding: var(--s4) var(--s5);
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .cms-tab:hover { color: var(--ink); }
+  .cms-tab.is-active { color: var(--accent-deep); border-bottom-color: var(--accent); }
+
+  .cms-panel { padding: var(--s6) var(--s5); max-width: 1100px; margin: 0 auto; display: none; }
+  .cms-panel.is-active { display: block; }
+
+  .cms-section { background: #fff; border: 1px solid var(--hush); border-radius: var(--radius); padding: var(--s6); margin-bottom: var(--s5); }
+  .cms-section h2 { font-size: 1.4rem; margin-bottom: var(--s4); }
+  .cms-section h3 { font-size: 1.1rem; margin: var(--s5) 0 var(--s3); color: var(--ink-soft); font-weight: 500; }
+
+  .cms-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s4);
+    flex-wrap: wrap;
+    margin-bottom: var(--s5);
+  }
+
+  /* ---- Login card ---- */
+  .login-wrap {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s5);
+  }
+  .login-card {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s7);
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 4px 16px rgba(26,31,36,0.05);
+  }
+  .login-card h1 { font-size: 1.8rem; margin-bottom: var(--s4); text-align: center; }
+  .login-card .form { gap: var(--s4); }
+  .login-error { color: #7a3134; font-size: 0.9rem; margin-top: var(--s3); display: none; }
+  .login-error.is-visible { display: block; }
+  .login-reset {
+    text-align: center;
+    margin-top: var(--s4);
+    font-size: 0.88rem;
+  }
+  .login-reset button {
+    background: transparent;
+    border: 0;
+    color: var(--accent);
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: inherit;
+  }
+
+  /* ---- Listings table ---- */
+  .listings-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s4);
+    margin-bottom: var(--s5);
+    flex-wrap: wrap;
+  }
+  .listings-toolbar .filters { margin-bottom: 0; }
+
+  .listing-row {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    gap: var(--s4);
+    padding: var(--s4);
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    background: #fff;
+    margin-bottom: var(--s3);
+    align-items: center;
+  }
+  .listing-row__thumb {
+    width: 80px; height: 60px;
+    background: var(--paper-deep);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .listing-row__thumb img, .listing-row__thumb svg { width: 100%; height: 100%; object-fit: cover; }
+  .listing-row__main { display: flex; flex-direction: column; gap: var(--s1); min-width: 0; }
+  .listing-row__price { font-family: var(--font-serif); font-size: 1.25rem; color: var(--ink); }
+  .listing-row__addr  { font-size: 0.9rem; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .listing-row__stats { font-size: 0.82rem; color: var(--ink-muted); }
+  .listing-row__actions { display: flex; gap: var(--s2); flex-wrap: wrap; }
+
+  /* ---- Buttons ---- */
+  .btn--sm {
+    padding: var(--s2) var(--s4);
+    font-size: 0.78rem;
+  }
+  .btn--secondary {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--hush);
+  }
+  .btn--secondary:hover, .btn--secondary:focus { background: var(--paper-deep); color: var(--ink); border-color: var(--ink-muted); }
+  .btn--danger {
+    background: #7a3134;
+    border-color: #7a3134;
+    color: #fff;
+  }
+  .btn--danger:hover, .btn--danger:focus { background: #5e2528; border-color: #5e2528; }
+
+  /* ---- Drawer / modal for listing edit ---- */
+  .drawer-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15,20,28,0.55);
+    z-index: 200;
+    display: none;
+  }
+  .drawer-backdrop.is-open { display: block; }
+  .drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 100%;
+    max-width: 720px;
+    background: #fff;
+    z-index: 210;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .drawer.is-open { transform: translateX(0); }
+  .drawer__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--s4) var(--s5);
+    border-bottom: 1px solid var(--hush);
+  }
+  .drawer__header h2 { font-size: 1.3rem; margin: 0; }
+  .drawer__close {
+    background: transparent;
+    border: 0;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--ink-muted);
+    cursor: pointer;
+    padding: var(--s2);
+  }
+  .drawer__body { flex: 1; overflow-y: auto; padding: var(--s5); }
+  .drawer__footer {
+    border-top: 1px solid var(--hush);
+    padding: var(--s4) var(--s5);
+    display: flex;
+    gap: var(--s3);
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .drawer__footer-left, .drawer__footer-right { display: flex; gap: var(--s3); }
+
+  /* ---- Address group ---- */
+  .address-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--s3);
+  }
+  @media (min-width: 600px) {
+    .address-grid { grid-template-columns: 2fr 1fr 0.5fr 0.7fr; }
+  }
+
+  .numbers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: var(--s3);
+  }
+
+  /* ---- Chips input ---- */
+  .chip-input {
+    border: 1px solid var(--hush);
+    background: #fff;
+    border-radius: var(--radius);
+    padding: var(--s2);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s2);
+    min-height: 48px;
+  }
+  .chip-input input {
+    flex: 1;
+    border: 0;
+    outline: none;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    padding: var(--s2);
+    min-width: 140px;
+    background: transparent;
+  }
+  .chip-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+    background: var(--paper-deep);
+    border: 1px solid var(--hush);
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+  .chip-tag button {
+    background: transparent;
+    border: 0;
+    color: var(--ink-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0;
+  }
+  .chip-tag button:hover { color: var(--ink); }
+
+  /* ---- Open houses repeater ---- */
+  .oh-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: var(--s3);
+    align-items: end;
+    margin-bottom: var(--s3);
+  }
+  .oh-add {
+    background: transparent;
+    border: 0;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 0.88rem;
+    padding: var(--s2) 0;
+  }
+  .oh-add:hover { color: var(--accent-deep); }
+
+  /* ---- Photo dropzone + strip ---- */
+  .dropzone {
+    border: 2px dashed var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s6);
+    text-align: center;
+    color: var(--ink-muted);
+    background: var(--paper-deep);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .dropzone:hover, .dropzone.is-drag {
+    border-color: var(--accent);
+    background: #fff;
+    color: var(--ink);
+  }
+  .dropzone input[type=file] { display: none; }
+  .dropzone__note {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    margin-top: var(--s2);
+  }
+  .upload-progress {
+    margin-top: var(--s3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s2);
+  }
+  .upload-progress__item {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    font-size: 0.85rem;
+  }
+  .upload-progress__bar {
+    flex: 1;
+    height: 6px;
+    background: var(--hush);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .upload-progress__fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.15s linear;
+  }
+
+  .photo-strip {
+    display: flex;
+    gap: var(--s3);
+    overflow-x: auto;
+    padding: var(--s3) 0;
+    margin-top: var(--s3);
+  }
+  .photo-card {
+    position: relative;
+    width: 140px;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--paper-deep);
+    cursor: grab;
+  }
+  .photo-card.is-primary { border-color: var(--accent); }
+  .photo-card img { width: 100%; height: 100px; object-fit: cover; display: block; }
+  .photo-card__actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--s2);
+    background: #fff;
+    font-size: 0.78rem;
+  }
+  .photo-card__star, .photo-card__remove {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    color: var(--ink-muted);
+    padding: 0;
+    font-size: 0.78rem;
+  }
+  .photo-card__star.is-on { color: var(--accent-deep); }
+  .photo-card__star:hover, .photo-card__remove:hover { color: var(--ink); }
+  .photo-card.is-dragging { opacity: 0.5; }
+  .video-card {
+    margin-top: var(--s3);
+    max-width: 360px;
+    border: 1px solid var(--line, #e3dccd);
+    border-radius: 6px;
+    overflow: hidden;
+    background: #000;
+  }
+  .video-card video { width: 100%; display: block; max-height: 240px; background: #000; }
+  .video-card .photo-card__remove {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    background: var(--paper-deep);
+    text-align: center;
+  }
+
+  /* ---- Toast ---- */
+  .toast {
+    position: fixed;
+    bottom: var(--s5);
+    right: var(--s5);
+    background: var(--ink);
+    color: #fff;
+    padding: var(--s3) var(--s5);
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    z-index: 300;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+  }
+  .toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .toast.is-error { background: #7a3134; }
+
+  /* ---- Headshot row in About tab ---- */
+  .headshot-row {
+    display: flex;
+    align-items: center;
+    gap: var(--s5);
+    flex-wrap: wrap;
+  }
+  .headshot-row__thumb {
+    width: 120px;
+    height: 180px;
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .headshot-row__thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* ---- Status pill (matches public) ---- */
+  .row-pill {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.1rem 0.4rem;
+    border-radius: 2px;
+    background: var(--ink);
+    color: #fff;
+    display: inline-block;
+    margin-right: var(--s2);
+  }
+  .row-pill--active  { background: #2d6a4f; }
+  .row-pill--pending { background: #b06b1c; }
+  .row-pill--sold    { background: #7a3134; }
+
+  .helper-text {
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+    margin-top: var(--s2);
+  }
+  .helper-text--inline {
+    display: inline;
+    margin-left: var(--s2);
+  }
+  .empty-list {
+    text-align: center;
+    color: var(--ink-muted);
+    padding: var(--s7);
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+  }
+
+  /* ---- Email Templates layout ---- */
+  .et-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: var(--s5);
+    align-items: start;
+  }
+  @media (max-width: 880px) {
+    .et-layout { grid-template-columns: 1fr; }
+  }
+  .et-list {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s3);
+    position: sticky;
+    top: var(--s4);
+  }
+  .et-group {
+    margin-bottom: var(--s3);
+  }
+  .et-group__label {
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    padding: var(--s3) var(--s3) var(--s2);
+    font-weight: 500;
+  }
+  .et-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    padding: var(--s3);
+    font-family: var(--font-sans);
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    border-radius: var(--radius);
+    cursor: pointer;
+    line-height: 1.3;
+  }
+  .et-item:hover { background: var(--paper-deep); color: var(--ink); }
+  .et-item.is-active { background: var(--accent); color: #fff; }
+  .et-item.is-active:hover { background: var(--accent-deep); }
+  .et-item__type {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.65;
+    margin-bottom: 2px;
+  }
+  .et-item__customized {
+    font-size: 0.7rem;
+    color: var(--accent);
+    margin-left: var(--s2);
+  }
+  .et-item.is-active .et-item__customized { color: #fff; }
+
+  .et-editor {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s5);
+  }
+  .et-editor__header {
+    border-bottom: 1px solid var(--hush);
+    padding-bottom: var(--s3);
+    margin-bottom: var(--s4);
+  }
+  .et-editor__header h3 { font-size: 1.15rem; margin: 0 0 var(--s2); }
+  .et-editor__header p { font-size: 0.85rem; color: var(--ink-muted); margin: 0; }
+
+  .et-vars {
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    padding: var(--s4);
+    margin-bottom: var(--s4);
+    font-size: 0.82rem;
+  }
+  .et-vars h4 {
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: var(--s2);
+  }
+  .et-vars table { width: 100%; border-collapse: collapse; }
+  .et-vars td {
+    padding: var(--s1) var(--s2) var(--s1) 0;
+    vertical-align: top;
+    font-size: 0.8rem;
+  }
+  .et-vars td:first-child {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--accent-deep);
+    white-space: nowrap;
+    padding-right: var(--s4);
+  }
+  .et-vars td:last-child { color: var(--ink-soft); }
+
+  .et-body-editor {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    min-height: 260px;
+    resize: vertical;
+  }
+
+  .et-preview {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    padding: 0;
+    margin-top: var(--s4);
+    overflow: hidden;
+  }
+  .et-preview__bar {
+    background: var(--paper-deep);
+    padding: var(--s3) var(--s4);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    border-bottom: 1px solid var(--hush);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .et-preview__subject {
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--hush);
+    font-size: 0.9rem;
+  }
+  .et-preview__subject strong { color: var(--ink-muted); font-weight: 500; margin-right: var(--s2); }
+  .et-preview__body {
+    padding: var(--s5);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    color: #1a1f24;
+    max-height: 560px;
+    overflow-y: auto;
+  }
+  .et-preview__body p { margin-bottom: 12px; }
+  .et-preview__body ul { margin: 8px 0 12px 24px; }
+  .et-preview__body blockquote { margin: 12px 0; }
+  .et-preview__body a { color: #a8854c; }
+
+  .et-actions {
+    display: flex;
+    gap: var(--s3);
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--s5);
+    padding-top: var(--s4);
+    border-top: 1px solid var(--hush);
+    flex-wrap: wrap;
+  }
+  .et-actions__left { display: flex; gap: var(--s3); flex-wrap: wrap; }
+  .et-actions__right { display: flex; gap: var(--s3); }
+
+  .et-enabled-row {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    margin-bottom: var(--s4);
+    font-size: 0.9rem;
+    color: var(--ink);
+  }
+  .et-enabled-row input { width: auto; }
+
+  /* ---- Email Log ---- */
+  .el-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--s4);
+    margin-bottom: var(--s4);
+    flex-wrap: wrap;
+  }
+  .el-filters {
+    display: flex;
+    gap: var(--s2);
+    flex-wrap: wrap;
+  }
+  .el-chip {
+    background: transparent;
+    border: 1px solid var(--hush);
+    border-radius: 100px;
+    padding: var(--s2) var(--s4);
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    font-family: var(--font-sans);
+    transition: all 0.15s;
+  }
+  .el-chip:hover { color: var(--ink); border-color: var(--ink-muted); }
+  .el-chip.is-active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .el-table {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    overflow: hidden;
+    width: 100%;
+  }
+  .el-row {
+    display: grid;
+    grid-template-columns: 130px 1fr 1fr 110px 100px 90px;
+    gap: var(--s3);
+    padding: var(--s3) var(--s4);
+    border-bottom: 1px solid var(--hush);
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: background 0.1s;
+  }
+  .el-row:last-child { border-bottom: 0; }
+  .el-row:hover { background: var(--paper); }
+  .el-row--head {
+    background: var(--paper-deep);
+    cursor: default;
+    font-size: 0.74rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+  .el-row--head:hover { background: var(--paper-deep); }
+  .el-cell--ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .el-status {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+  .el-status--sent    { background: rgba(45, 106, 79, 0.12); color: #2d6a4f; }
+  .el-status--failed  { background: rgba(122, 49, 52, 0.12); color: #7a3134; }
+  .el-status--skipped { background: rgba(122, 126, 132, 0.12); color: var(--ink-muted); }
+
+  .el-audience {
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .el-empty {
+    text-align: center;
+    padding: var(--s7);
+    color: var(--ink-muted);
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+  }
+
+  /* ---- Email Log detail drawer ---- */
+  .el-detail-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15, 20, 28, 0.55);
+    z-index: 250;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: var(--s4);
+  }
+  .el-detail-backdrop.is-open { display: flex; }
+  .el-detail {
+    background: #fff;
+    border-radius: var(--radius);
+    max-width: 760px;
+    width: 100%;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .el-detail__close {
+    position: absolute;
+    top: var(--s3);
+    right: var(--s4);
+    background: transparent;
+    border: 0;
+    font-size: 1.8rem;
+    color: var(--ink-muted);
+    cursor: pointer;
+    line-height: 1;
+  }
+  .el-detail__close:hover { color: var(--ink); }
+  .el-detail__header {
+    padding: var(--s5) var(--s6);
+    border-bottom: 1px solid var(--hush);
+    background: var(--paper-deep);
+  }
+  .el-detail__header h2 { font-size: 1.4rem; margin-bottom: var(--s3); }
+  .el-detail__meta {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    row-gap: var(--s2);
+    font-size: 0.85rem;
+  }
+  .el-detail__meta dt { color: var(--ink-muted); }
+  .el-detail__meta dd { color: var(--ink); word-break: break-word; }
+  .el-detail__body-bar {
+    padding: var(--s3) var(--s6);
+    background: var(--paper);
+    border-bottom: 1px solid var(--hush);
+    font-size: 0.78rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+  .el-detail__body {
+    padding: var(--s5) var(--s6);
+    overflow-y: auto;
+    flex: 1;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .el-detail__body p { margin-bottom: 12px; }
+  .el-detail__body ul { margin: 8px 0 12px 24px; }
+  .el-detail__body blockquote { margin: 12px 0; }
+  .el-detail__error {
+    background: rgba(122, 49, 52, 0.06);
+    border: 1px solid rgba(122, 49, 52, 0.2);
+    padding: var(--s3) var(--s4);
+    margin: var(--s4) var(--s6) 0;
+    border-radius: var(--radius);
+    font-size: 0.88rem;
+    color: #7a3134;
+  }
+
+  @media (max-width: 760px) {
+    .el-row { grid-template-columns: 100px 1fr 90px; }
+    .el-cell--hide-mobile { display: none; }
+  }
+
+  /* ---- Guides editor ---- */
+  .gc-subtabs {
+    display: flex;
+    gap: var(--s3);
+    margin-bottom: var(--s5);
+    border-bottom: 1px solid var(--hush);
+  }
+  .gc-subtab {
+    background: transparent;
+    border: 0;
+    padding: var(--s3) var(--s4);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .gc-subtab:hover { color: var(--ink); }
+  .gc-subtab.is-active {
+    color: var(--accent-deep);
+    border-bottom-color: var(--accent);
+  }
+
+  .gc-cover {
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    padding: var(--s5);
+    margin-bottom: var(--s5);
+  }
+  .gc-cover h3 {
+    margin-bottom: var(--s4);
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+
+  .gc-sections-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--s4);
+    flex-wrap: wrap;
+    gap: var(--s3);
+  }
+  .gc-sections-header h3 {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 500;
+  }
+  .gc-add-row {
+    display: flex;
+    gap: var(--s2);
+    align-items: center;
+  }
+  .gc-add-row select {
+    width: auto;
+    padding: var(--s2) var(--s3);
+    font-size: 0.88rem;
+  }
+
+  .gc-section-card {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s4);
+    margin-bottom: var(--s3);
+    position: relative;
+  }
+  .gc-section-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--s3);
+    gap: var(--s3);
+    flex-wrap: wrap;
+  }
+  .gc-section-card__type {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--s2);
+  }
+  .gc-section-card__type label {
+    font-size: 0.74rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin: 0;
+  }
+  .gc-section-card__type select {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.82rem;
+    width: auto;
+  }
+  .gc-section-card__ctrls {
+    display: flex;
+    gap: var(--s1);
+  }
+  .gc-icon-btn {
+    background: transparent;
+    border: 1px solid var(--hush);
+    border-radius: 3px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ink-muted);
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 0;
+  }
+  .gc-icon-btn:hover { background: var(--paper-deep); color: var(--ink); }
+  .gc-icon-btn--danger:hover { color: #7a3134; border-color: #7a3134; }
+
+  .gc-section-card__body .field { margin-bottom: var(--s2); }
+  .gc-section-card__body input[type="text"],
+  .gc-section-card__body textarea {
+    font-family: var(--font-sans);
+    font-size: 0.92rem;
+  }
+  .gc-section-card__body textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+  .gc-section-card__help {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-top: var(--s2);
+  }
+  .gc-section-card__help code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--paper-deep);
+    padding: 1px 4px;
+    border-radius: 2px;
+    color: var(--accent-deep);
+  }
+
+  .gc-empty {
+    text-align: center;
+    padding: var(--s5);
+    color: var(--ink-muted);
+    background: var(--paper-deep);
+    border-radius: var(--radius);
+    font-style: italic;
+  }
+
+  .gc-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--s6);
+    padding-top: var(--s5);
+    border-top: 1px solid var(--hush);
+    flex-wrap: wrap;
+    gap: var(--s3);
+  }
+  .gc-actions__left { display: flex; gap: var(--s3); flex-wrap: wrap; }
+  .gc-actions__right { display: flex; gap: var(--s3); }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN GATE ============ -->
+<div id="login-wrap" class="login-wrap" style="display:none;">
+  <div class="login-card">
+    <h1>Marie Borders CMS</h1>
+    <form id="login-form" class="form" novalidate>
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <div id="login-error" class="login-error" role="alert"></div>
+      <button type="submit" class="btn">Sign In</button>
+      <div class="login-reset">
+        <button type="button" id="login-reset-btn">Forgot password?</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ CMS SHELL ============ -->
+<div id="cms-shell" class="cms-shell">
+  <div class="cms-bar">
+    <div class="cms-bar__brand">Marie Borders CMS<span class="cms-bar__ver">v2.3</span></div>
+    <div class="cms-bar__user">
+      <span>Signed in as <strong id="cms-user-email">—</strong></span>
+      <button id="cms-signout-btn" type="button">Sign Out</button>
+    </div>
+  </div>
+
+  <nav class="cms-tabs" aria-label="CMS sections">
+    <button class="cms-tab is-active" type="button" data-tab="listings">Listings</button>
+    <button class="cms-tab" type="button" data-tab="about">About Page</button>
+    <button class="cms-tab" type="button" data-tab="home">Home Page</button>
+    <button class="cms-tab" type="button" data-tab="contact">Contact Info</button>
+    <button class="cms-tab" type="button" data-tab="emails">Email Templates</button>
+    <button class="cms-tab" type="button" data-tab="guides">Guides</button>
+    <button class="cms-tab" type="button" data-tab="emaillog">Email Log</button>
+  </nav>
+
+  <!-- ============ LISTINGS PANEL ============ -->
+  <section class="cms-panel is-active" data-panel="listings">
+    <div class="cms-section">
+      <div class="listings-toolbar">
+        <button id="add-listing-btn" type="button" class="btn">Add New Listing</button>
+        <div class="filters" role="tablist" aria-label="Filter listings by status">
+          <button class="chip is-active" type="button" data-filter="all">All</button>
+          <button class="chip" type="button" data-filter="active">Active</button>
+          <button class="chip" type="button" data-filter="pending">Pending</button>
+          <button class="chip" type="button" data-filter="sold">Sold</button>
+        </div>
+      </div>
+      <div id="listings-list" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- ============ ABOUT PANEL ============ -->
+  <section class="cms-panel" data-panel="about">
+    <div class="cms-section">
+      <h2>About Page</h2>
+      <form id="about-form" class="form" novalidate>
+        <div class="field">
+          <label for="about-pageHeading">Page heading</label>
+          <input type="text" id="about-pageHeading" data-field="pageHeading">
+        </div>
+
+        <h3>Headshot</h3>
+        <div class="headshot-row">
+          <div class="headshot-row__thumb">
+            <img id="about-headshot-preview" src="assets/images/marie-headshot-2022.jpg?v=2" alt="Current headshot">
+          </div>
+          <div>
+            <input type="file" id="about-headshot-input" accept="image/jpeg,image/png,image/webp,image/avif" style="display:none;">
+            <button type="button" class="btn btn--secondary btn--sm" id="about-headshot-replace">Replace Photo</button>
+            <p class="helper-text">JPEG, PNG, or WebP. Max 2000px wide — larger images are resized client-side before upload.</p>
+            <div id="about-headshot-progress" class="upload-progress"></div>
+          </div>
+        </div>
+
+        <h3>Bio paragraphs</h3>
+        <div class="field">
+          <label for="about-bio1">Paragraph 1</label>
+          <textarea id="about-bio1" rows="4" data-bio-index="0"></textarea>
+        </div>
+        <div class="field">
+          <label for="about-bio2">Paragraph 2</label>
+          <textarea id="about-bio2" rows="4" data-bio-index="1"></textarea>
+        </div>
+        <div class="field">
+          <label for="about-bio3">Paragraph 3</label>
+          <textarea id="about-bio3" rows="4" data-bio-index="2"></textarea>
+        </div>
+
+        <h3>Credentials</h3>
+        <p class="helper-text" style="margin-top:0;">Captured for record. The public About page currently shows four fixed credential tiles — these chips are saved with the doc for future use.</p>
+        <div class="chip-input" data-chip-input="credentials" id="about-credentials-chips">
+          <input type="text" placeholder="Type a credential and press Enter">
+        </div>
+
+        <div class="cms-row" style="margin-top:var(--s5);">
+          <button type="submit" class="btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ HOME PANEL ============ -->
+  <section class="cms-panel" data-panel="home">
+    <div class="cms-section">
+      <h2>Home Page</h2>
+      <form id="home-form" class="form" novalidate>
+        <div class="field">
+          <label for="home-heroHeadline">Hero headline</label>
+          <input type="text" id="home-heroHeadline" data-field="heroHeadline">
+        </div>
+        <div class="field">
+          <label for="home-heroSubhead">Hero subhead</label>
+          <input type="text" id="home-heroSubhead" data-field="heroSubhead">
+        </div>
+        <div class="field">
+          <label for="home-introHeading">Intro section heading</label>
+          <input type="text" id="home-introHeading" data-field="introHeading">
+        </div>
+        <div class="field">
+          <label for="home-introBody">Intro body</label>
+          <textarea id="home-introBody" rows="4" data-field="introBody"></textarea>
+        </div>
+
+        <h3>Featured listings</h3>
+        <p class="helper-text" style="margin-top:0;">Featured listings are not configured here. Open any listing in the Listings tab and check the <strong>Featured</strong> box — those listings will appear on the home page.</p>
+
+        <div class="cms-row" style="margin-top:var(--s5);">
+          <button type="submit" class="btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT INFO PANEL ============ -->
+  <section class="cms-panel" data-panel="contact">
+    <div class="cms-section">
+      <h2>Contact Info</h2>
+      <p class="helper-text" style="margin-top:0;margin-bottom:var(--s5);">
+        Note: The contact form delivery email (<code>mariebordershometeam@gmail.com</code>) is set in the website code and not editable here. Contact Daniel to change.
+      </p>
+      <form id="contact-form-cms" class="form" novalidate>
+        <div class="field">
+          <label for="contact-displayEmail">Display email</label>
+          <input type="email" id="contact-displayEmail" data-field="displayEmail">
+        </div>
+        <div class="field">
+          <label for="contact-phone">Phone</label>
+          <input type="text" id="contact-phone" data-field="phone">
+        </div>
+        <div class="field">
+          <label for="contact-license">License</label>
+          <input type="text" id="contact-license" data-field="license">
+        </div>
+        <div class="field">
+          <label for="contact-brokerage">Brokerage name</label>
+          <input type="text" id="contact-brokerage" data-field="brokerage">
+        </div>
+        <div class="field">
+          <label for="contact-brokerageUrl">Brokerage URL</label>
+          <input type="url" id="contact-brokerageUrl" data-field="brokerageUrl">
+        </div>
+        <div class="cms-row" style="margin-top:var(--s5);">
+          <button type="submit" class="btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ EMAIL TEMPLATES PANEL ============ -->
+  <section class="cms-panel" data-panel="emails">
+    <div class="cms-section">
+      <h2>Email Templates</h2>
+      <p class="helper-text" style="margin-top:0;margin-bottom:var(--s5);">
+        Customize the subject and body of every email the site sends. Each form on the website triggers two emails — a notification to you and an auto-reply to the visitor. Variables in <code style="font-family:ui-monospace,monospace;color:var(--accent-deep);">{{double braces}}</code> are filled in automatically when the email is sent.
+      </p>
+
+      <div class="et-layout">
+        <!-- Left: template list -->
+        <div class="et-list" id="et-list" aria-label="Templates"></div>
+
+        <!-- Right: editor -->
+        <div class="et-editor">
+          <div id="et-empty" class="empty-list" style="margin:0;padding:var(--s7) var(--s5);">
+            Select a template on the left to edit.
+          </div>
+
+          <div id="et-edit" style="display:none;">
+            <div class="et-editor__header">
+              <h3 id="et-title">Template title</h3>
+              <p id="et-description">Description</p>
+            </div>
+
+            <div class="et-enabled-row">
+              <input type="checkbox" id="et-enabled" checked>
+              <label for="et-enabled">Send this email <span style="color:var(--ink-muted);font-size:0.82rem;">— uncheck to disable this notification</span></label>
+            </div>
+
+            <div class="et-vars" id="et-vars-box">
+              <h4>Available variables</h4>
+              <table id="et-vars-table"></table>
+              <p style="margin-top:var(--s2);font-size:0.78rem;color:var(--ink-muted);">
+                Add <code style="font-family:ui-monospace,monospace;">|raw</code> after a variable to insert HTML without escaping. Use <code style="font-family:ui-monospace,monospace;">list:</code> or <code style="font-family:ui-monospace,monospace;">ul:</code> prefix on array variables.
+              </p>
+            </div>
+
+            <div class="field">
+              <label for="et-subject">Subject line</label>
+              <input type="text" id="et-subject" placeholder="Subject seen by recipient">
+            </div>
+
+            <div class="field">
+              <label for="et-body">Email body (HTML)</label>
+              <textarea id="et-body" class="et-body-editor" rows="14" spellcheck="false" placeholder="HTML body…"></textarea>
+              <p class="helper-text" style="margin-top:var(--s2);">HTML is allowed. The preview below shows how it will look in the recipient's inbox.</p>
+            </div>
+
+            <div class="et-preview" aria-label="Live preview">
+              <div class="et-preview__bar">
+                <span>Preview</span>
+                <span id="et-preview-audience" style="text-transform:none;letter-spacing:0;font-size:0.75rem;color:var(--ink-muted);"></span>
+              </div>
+              <div class="et-preview__subject">
+                <strong>Subject:</strong> <span id="et-preview-subject"></span>
+              </div>
+              <div class="et-preview__body" id="et-preview-body"></div>
+            </div>
+
+            <div class="et-actions">
+              <div class="et-actions__left">
+                <button type="button" class="btn btn--secondary btn--sm" id="et-reset-btn">Reset to Default</button>
+              </div>
+              <div class="et-actions__right">
+                <button type="button" class="btn btn--secondary" id="et-cancel-btn">Discard Changes</button>
+                <button type="button" class="btn" id="et-save-btn">Save</button>
+              </div>
+            </div>
+
+            <p id="et-customized-note" class="helper-text" style="display:none;margin-top:var(--s3);">
+              <strong style="color:var(--accent-deep);">Customized</strong> — this template differs from the default. Click "Reset to Default" to revert.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GUIDES PANEL ============ -->
+  <section class="cms-panel" data-panel="guides">
+    <div class="cms-section">
+      <h2>Guides</h2>
+      <p class="helper-text" style="margin-top:0;margin-bottom:var(--s5);">
+        Edit the Buyer's and Seller's Guides. Pick a section type from the dropdown to add a heading, paragraph, quote, list, or numbered step card. Brand styling is locked &mdash; you control content only. Use <code style="font-family:ui-monospace,monospace;color:var(--accent-deep);">**bold**</code> and <code style="font-family:ui-monospace,monospace;color:var(--accent-deep);">*italic*</code> around words to format inline.
+      </p>
+
+      <div class="gc-subtabs" role="tablist">
+        <button class="gc-subtab is-active" type="button" role="tab" data-gc-which="buyer">Buyer's Guide</button>
+        <button class="gc-subtab" type="button" role="tab" data-gc-which="seller">Seller's Guide</button>
+      </div>
+
+      <div class="gc-cover">
+        <h3>Cover</h3>
+        <div class="field">
+          <label for="gc-title">Title (cover heading)</label>
+          <input type="text" id="gc-title">
+        </div>
+        <div class="field">
+          <label for="gc-eyebrow">Eyebrow tagline</label>
+          <input type="text" id="gc-eyebrow" placeholder="Marie Borders · Marin Real Estate">
+        </div>
+        <div class="field">
+          <label for="gc-coverLede">Cover lede paragraph</label>
+          <textarea id="gc-coverLede" rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="gc-sections-header">
+        <h3>Body sections</h3>
+        <div class="gc-add-row">
+          <label for="gc-add-type" style="margin:0;font-size:0.78rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-muted);">Add:</label>
+          <select id="gc-add-type">
+            <option value="h2">Section heading (h2)</option>
+            <option value="h3">Sub-heading (h3)</option>
+            <option value="p">Paragraph</option>
+            <option value="quote">Pull quote</option>
+            <option value="ol">Numbered list</option>
+            <option value="ul">Bullet list</option>
+            <option value="step">Step card (auto-numbered)</option>
+          </select>
+          <button type="button" class="btn btn--secondary btn--sm" id="gc-add-btn">+ Add</button>
+        </div>
+      </div>
+
+      <div id="gc-sections"></div>
+
+      <div class="gc-cover" style="margin-top:var(--s5);">
+        <h3>Closing card</h3>
+        <p class="helper-text" style="margin-top:0;margin-bottom:var(--s3);">The dark card at the bottom of the guide. Contact info (email, phone, DRE #) is rendered automatically &mdash; you control the title and body text only.</p>
+        <div class="field">
+          <label for="gc-closingTitle">Closing card title</label>
+          <input type="text" id="gc-closingTitle">
+        </div>
+        <div class="field">
+          <label for="gc-closingBody">Closing card body</label>
+          <textarea id="gc-closingBody" rows="3"></textarea>
+        </div>
+      </div>
+
+      <div class="gc-actions">
+        <div class="gc-actions__left">
+          <button type="button" class="btn btn--secondary btn--sm" id="gc-reset-btn">Reset to Default</button>
+          <a class="btn btn--secondary btn--sm" id="gc-preview-link" href="#" target="_blank" rel="noopener">Preview Guide ↗</a>
+        </div>
+        <div class="gc-actions__right">
+          <button type="button" class="btn btn--secondary" id="gc-cancel-btn">Discard Changes</button>
+          <button type="button" class="btn" id="gc-save-btn">Save</button>
+        </div>
+      </div>
+
+      <p id="gc-customized-note" class="helper-text" style="display:none;margin-top:var(--s3);">
+        <strong style="color:var(--accent-deep);">Customized</strong> &mdash; this guide differs from the default. Click "Reset to Default" to revert.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ EMAIL LOG PANEL ============ -->
+  <section class="cms-panel" data-panel="emaillog">
+    <div class="cms-section">
+      <h2>Email Log</h2>
+      <p class="helper-text" style="margin-top:0;margin-bottom:var(--s5);">
+        Every email the site sends &mdash; admin notifications, visitor auto-replies, and skipped/failed sends. Click any row to see the full message body.
+      </p>
+
+      <div class="el-toolbar">
+        <div class="el-filters" role="group" aria-label="Filter by status">
+          <button class="el-chip is-active" type="button" data-el-status="all">All</button>
+          <button class="el-chip" type="button" data-el-status="sent">Sent</button>
+          <button class="el-chip" type="button" data-el-status="failed">Failed</button>
+          <button class="el-chip" type="button" data-el-status="skipped">Skipped</button>
+        </div>
+        <div class="el-filters" role="group" aria-label="Filter by inquiry type">
+          <button class="el-chip is-active" type="button" data-el-type="all">All types</button>
+          <button class="el-chip" type="button" data-el-type="contactInquiry">Contact</button>
+          <button class="el-chip" type="button" data-el-type="wishList">Wish List</button>
+          <button class="el-chip" type="button" data-el-type="homeValuation">Home Value</button>
+          <button class="el-chip" type="button" data-el-type="openHouseRSVP">RSVP</button>
+          <button class="el-chip" type="button" data-el-type="guideDownload">Guide</button>
+        </div>
+        <button class="btn btn--secondary btn--sm" type="button" id="el-refresh-btn">Refresh</button>
+      </div>
+
+      <div class="el-table" id="el-table">
+        <div class="el-row el-row--head">
+          <div>When</div>
+          <div>To</div>
+          <div class="el-cell--hide-mobile">Subject</div>
+          <div class="el-cell--hide-mobile">Type</div>
+          <div class="el-cell--hide-mobile">Audience</div>
+          <div>Status</div>
+        </div>
+        <div id="el-rows" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============ EMAIL LOG DETAIL ============ -->
+<div class="el-detail-backdrop" id="el-detail-backdrop" role="dialog" aria-modal="true" aria-labelledby="el-detail-title" aria-hidden="true">
+  <div class="el-detail">
+    <button type="button" class="el-detail__close" id="el-detail-close" aria-label="Close">&times;</button>
+    <div class="el-detail__header">
+      <h2 id="el-detail-title">Email</h2>
+      <dl class="el-detail__meta">
+        <dt>To</dt>     <dd id="el-detail-to">—</dd>
+        <dt>From</dt>   <dd>Marie Borders &lt;marie@marieborders.com&gt;</dd>
+        <dt>Reply&nbsp;to</dt> <dd id="el-detail-replyto">—</dd>
+        <dt>BCC</dt>    <dd id="el-detail-bcc">—</dd>
+        <dt>When</dt>   <dd id="el-detail-when">—</dd>
+        <dt>Status</dt> <dd id="el-detail-status">—</dd>
+      </dl>
+    </div>
+    <div id="el-detail-error-wrap"></div>
+    <div class="el-detail__body-bar">Email body (as recipient sees it)</div>
+    <div class="el-detail__body" id="el-detail-body">…</div>
+  </div>
+</div>
+
+<!-- ============ LISTING DRAWER ============ -->
+<div id="drawer-backdrop" class="drawer-backdrop"></div>
+<aside id="listing-drawer" class="drawer" aria-hidden="true" aria-label="Listing editor">
+  <div class="drawer__header">
+    <h2 id="drawer-title">New Listing</h2>
+    <button class="drawer__close" id="drawer-close" type="button" aria-label="Close drawer">&times;</button>
+  </div>
+  <div class="drawer__body">
+    <form id="listing-form" class="form" novalidate>
+      <input type="hidden" id="listing-id">
+
+      <div class="field--row">
+        <div class="field">
+          <label for="listing-status">Status</label>
+          <select id="listing-status">
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="sold">Sold</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <label style="display:flex;align-items:center;gap:var(--s2);font-size:0.95rem;letter-spacing:0;text-transform:none;color:var(--ink);padding-top:var(--s2);">
+            <input type="checkbox" id="listing-featured" style="width:auto;">
+            Featured (appears on home page)
+          </label>
+        </div>
+      </div>
+
+      <div class="field--row">
+        <div class="field">
+          <label for="listing-listPrice">List price ($)</label>
+          <input type="text" inputmode="numeric" id="listing-listPrice">
+        </div>
+        <div class="field" id="listing-soldPrice-field">
+          <label for="listing-soldPrice">Sold price ($)</label>
+          <input type="text" inputmode="numeric" id="listing-soldPrice">
+        </div>
+      </div>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Address</h3>
+      <div class="address-grid">
+        <div class="field">
+          <label for="listing-street">Street</label>
+          <input type="text" id="listing-street">
+        </div>
+        <div class="field">
+          <label for="listing-city">City</label>
+          <input type="text" id="listing-city">
+        </div>
+        <div class="field">
+          <label for="listing-state">State</label>
+          <input type="text" id="listing-state" value="CA" maxlength="2">
+        </div>
+        <div class="field">
+          <label for="listing-zip">Zip</label>
+          <input type="text" id="listing-zip" maxlength="10">
+        </div>
+      </div>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Details</h3>
+      <div class="numbers-grid">
+        <div class="field">
+          <label for="listing-beds">Beds</label>
+          <input type="number" id="listing-beds" min="0">
+        </div>
+        <div class="field">
+          <label for="listing-baths">Baths</label>
+          <input type="number" id="listing-baths" min="0" step="0.5">
+        </div>
+        <div class="field">
+          <label for="listing-halfBaths">Half-baths</label>
+          <input type="number" id="listing-halfBaths" min="0">
+        </div>
+        <div class="field">
+          <label for="listing-sqft">Sqft</label>
+          <input type="number" id="listing-sqft" min="0">
+        </div>
+        <div class="field">
+          <label for="listing-yearBuilt">Year built</label>
+          <input type="number" id="listing-yearBuilt" min="1800" max="2100">
+        </div>
+      </div>
+
+      <div class="field--row" style="margin-top:var(--s4);">
+        <div class="field">
+          <label for="listing-lotSize">Lot size</label>
+          <input type="text" id="listing-lotSize" placeholder="e.g. 0.25 acre or 10,890 sqft">
+        </div>
+        <div class="field">
+          <label for="listing-mlsNumber">MLS number</label>
+          <input type="text" id="listing-mlsNumber">
+        </div>
+      </div>
+
+      <div class="field" style="margin-top:var(--s4);">
+        <label for="listing-description">Description</label>
+        <input id="listing-description" type="hidden">
+        <trix-editor id="listing-description-editor" input="listing-description" class="trix-content"></trix-editor>
+      </div>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Features</h3>
+      <div class="chip-input" data-chip-input="features" id="listing-features-chips">
+        <input type="text" placeholder="Type a feature and press Enter">
+      </div>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Open Houses</h3>
+      <div id="listing-openhouses"></div>
+      <button type="button" class="oh-add" id="listing-add-oh">+ Add open house</button>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Listing Video</h3>
+      <label class="dropzone" id="listing-video-dropzone">
+        <span>Drop a video here, or click to browse</span>
+        <span class="dropzone__note">MP4, MOV, or WebM, up to 200 MB. It is compressed automatically for the web (keep it to about 3 minutes). Plays first on the listing page and autoplays muted. Optional.</span>
+        <input type="file" id="listing-video-input" accept="video/mp4,video/quicktime,video/webm">
+      </label>
+      <div id="listing-video-progress" class="upload-progress"></div>
+      <div id="listing-video-strip"></div>
+
+      <h3 style="margin-top:var(--s5);margin-bottom:var(--s3);font-family:var(--font-serif);font-size:1.1rem;font-weight:500;">Photos</h3>
+      <label class="dropzone" id="listing-dropzone">
+        <span>Drop photos here, or click to browse</span>
+        <span class="dropzone__note">JPEG, PNG, WebP, or AVIF (AVIF is auto-converted to JPEG). HEIC not supported — please save as JPEG first.</span>
+        <input type="file" id="listing-photo-input" accept="image/jpeg,image/png,image/webp,image/avif" multiple>
+      </label>
+      <div id="listing-photo-progress" class="upload-progress"></div>
+      <div id="listing-photo-strip" class="photo-strip"></div>
+
+      <div class="field" style="margin-top:var(--s5);">
+        <label for="listing-slug">URL slug</label>
+        <input type="text" id="listing-slug">
+        <p class="helper-text">Auto-generated from address. Editable. Must be unique.</p>
+      </div>
+
+      <div id="listing-form-error" class="form__error" role="alert" style="display:none;"></div>
+    </form>
+  </div>
+  <div class="drawer__footer">
+    <div class="drawer__footer-left">
+      <button type="button" class="btn btn--danger btn--sm" id="listing-delete-btn" style="display:none;">Delete Listing</button>
+    </div>
+    <div class="drawer__footer-right">
+      <button type="button" class="btn btn--secondary" id="listing-cancel-btn">Cancel</button>
+      <button type="button" class="btn" id="listing-save-btn">Save</button>
+    </div>
+  </div>
+</aside>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="assets/js/email-template-preview.js"></script>
+<script src="assets/js/guide-defaults.js"></script>
+<script type="module">
+/* ===========================================================
+   Marie Borders CMS — single-file module
+   =========================================================== */
+
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import {
+  initializeFirestore,
+  memoryLocalCache,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  serverTimestamp,
+  Timestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytesResumable,
+  getDownloadURL,
+  deleteObject
+} from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js';
+
+const firebaseConfig = {
+  apiKey: 'AIzaSyDV0gn8txrIAgl6Iw-oCyuNK0QkSoIlhlM',
+  authDomain: 'mbreal-83286.firebaseapp.com',
+  projectId: 'mbreal-83286',
+  storageBucket: 'mbreal-83286.firebasestorage.app',
+  messagingSenderId: '884218966489',
+  appId: '1:884218966489:web:bfb1ed0276a7622a30a9c8',
+  measurementId: 'G-NLXR9XZ216'
+};
+
+function isSafari() {
+  const ua = navigator.userAgent || '';
+  if (/Chrome|CriOS|Chromium|Edg|EdgiOS|Firefox|FxiOS|OPR|OPiOS/i.test(ua)) return false;
+  return /Safari/i.test(ua);
+}
+
+const app = initializeApp(firebaseConfig);
+const db = initializeFirestore(app, {
+  localCache: isSafari()
+    ? memoryLocalCache()
+    : persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+});
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+/* ===========================================================
+   Toast
+   =========================================================== */
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+function toast(msg, opts) {
+  opts = opts || {};
+  toastEl.textContent = msg;
+  toastEl.classList.toggle('is-error', !!opts.error);
+  toastEl.classList.add('is-visible');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('is-visible'), 2000);
+}
+
+/* ===========================================================
+   Listing Description — rich text (Trix) helpers
+   Legacy descriptions are plain text with newlines; convert them
+   to HTML so paragraphs survive when loaded into the Trix editor.
+   The public listing page uses an equivalent helper to render.
+   =========================================================== */
+function descEscapeText(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function descLooksLikeHtml(s) {
+  return /<\/?[a-z][\s\S]*>/i.test(String(s));
+}
+// Convert legacy plain text: blank-line blocks -> <div>, single newlines -> <br>.
+// Trix uses <div> for block separation; this round-trips cleanly in the editor.
+function descPlainTextToHtml(text) {
+  const normalized = String(text).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  return normalized.split(/\n{2,}/)
+    .map(block => {
+      const trimmed = block.replace(/^\n+|\n+$/g, '');
+      if (!trimmed) return '';
+      return '<div>' + descEscapeText(trimmed).replace(/\n/g, '<br>') + '</div>';
+    })
+    .filter(Boolean)
+    .join('');
+}
+function descToEditorHtml(value) {
+  const v = String(value == null ? '' : value);
+  if (!v.trim()) return '';
+  return descLooksLikeHtml(v) ? v : descPlainTextToHtml(v);
+}
+// Set true while we programmatically load the editor so the resulting
+// trix-change event doesn't flag the drawer as dirty.
+let descLoadingProgrammatically = false;
+// Load HTML into the Trix editor, handling async element upgrade.
+function loadDescriptionIntoEditor(value) {
+  const html = descToEditorHtml(value);
+  const ed = document.getElementById('listing-description-editor');
+  const hidden = document.getElementById('listing-description');
+  if (!ed) return;
+  descLoadingProgrammatically = true;
+  const apply = () => {
+    if (ed.editor) {
+      ed.editor.loadHTML(html || '');
+      // Release the guard after the trix-change has had a chance to fire.
+      setTimeout(() => { descLoadingProgrammatically = false; }, 0);
+    } else {
+      // Editor not yet upgraded — retry on next tick.
+      setTimeout(apply, 30);
+    }
+  };
+  // Keep the hidden input in sync immediately as a fallback.
+  if (hidden) hidden.value = html || '';
+  apply();
+}
+// Read the editor's current HTML for saving. Trix mirrors HTML into the hidden
+// input's .value. Treat an empty/blank editor as an empty string.
+function readDescriptionHtml() {
+  const ed = document.getElementById('listing-description-editor');
+  const hidden = document.getElementById('listing-description');
+  let html = (ed && ed.editor) ? ed.value : (hidden ? hidden.value : '');
+  html = String(html || '');
+  // Trix represents an empty document as <div><br></div> / whitespace — normalize to ''.
+  const textOnly = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+  return textOnly ? html : '';
+}
+
+/* ===========================================================
+   Auth gate
+   =========================================================== */
+const loginWrap = document.getElementById('login-wrap');
+const cmsShell  = document.getElementById('cms-shell');
+const userEmailEl = document.getElementById('cms-user-email');
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    userEmailEl.textContent = user.email || '(unknown)';
+    loginWrap.style.display = 'none';
+    cmsShell.classList.add('is-ready');
+    init();
+  } else {
+    cmsShell.classList.remove('is-ready');
+    loginWrap.style.display = 'flex';
+  }
+});
+
+const loginForm = document.getElementById('login-form');
+const loginError = document.getElementById('login-error');
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  loginError.classList.remove('is-visible');
+  loginError.textContent = '';
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!email || !password) {
+    showLoginError('Please enter your email and password.');
+    return;
+  }
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    const code = err && err.code || '';
+    let msg = 'Sign-in failed. Please check your email and password.';
+    if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') msg = 'Incorrect email or password.';
+    else if (code === 'auth/user-not-found') msg = 'No account found with that email.';
+    else if (code === 'auth/too-many-requests') msg = 'Too many attempts — please wait a minute and try again.';
+    showLoginError(msg);
+  }
+});
+
+document.getElementById('login-reset-btn').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) {
+    showLoginError('Enter your email above first, then tap Forgot password.');
+    return;
+  }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    showLoginError('Reset email sent. Check your inbox.', false);
+  } catch (err) {
+    showLoginError('Could not send reset email. Please contact Daniel.');
+  }
+});
+
+function showLoginError(msg) {
+  loginError.textContent = msg;
+  loginError.classList.add('is-visible');
+}
+
+document.getElementById('cms-signout-btn').addEventListener('click', async () => {
+  if (hasUnsavedChanges() && !confirm('You have unsaved changes. Sign out anyway?')) return;
+  await signOut(auth);
+  window.location.reload();
+});
+
+/* ===========================================================
+   Tabs
+   =========================================================== */
+const tabBtns = document.querySelectorAll('.cms-tab');
+const panels  = document.querySelectorAll('.cms-panel');
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.getAttribute('data-tab');
+    if (hasUnsavedChanges() && !confirm('You have unsaved changes. Discard?')) return;
+    clearUnsaved();
+    tabBtns.forEach(b => b.classList.toggle('is-active', b === btn));
+    panels.forEach(p => p.classList.toggle('is-active', p.getAttribute('data-panel') === target));
+  });
+});
+
+/* ===========================================================
+   Unsaved-changes tracking (panels only — drawer has its own)
+   =========================================================== */
+const dirtyForms = new Set();
+let etDirty = false; // email templates panel dirty flag
+function markDirty(formId) { dirtyForms.add(formId); }
+function clearUnsaved() { dirtyForms.clear(); etDirty = false; }
+function hasUnsavedChanges() { return dirtyForms.size > 0 || etDirty; }
+
+['about-form', 'home-form', 'contact-form-cms'].forEach(id => {
+  const f = document.getElementById(id);
+  if (!f) return;
+  f.addEventListener('input', () => markDirty(id));
+});
+
+window.addEventListener('beforeunload', (e) => {
+  if (hasUnsavedChanges() || drawerDirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+/* ===========================================================
+   LIVE-HTML DEFAULTS
+   -----------------------------------------------------------
+   Reads the actual live HTML pages and pulls out the current
+   copy from [data-content="X"] elements. Used as the fallback
+   when a siteContent doc is missing or empty so the CMS always
+   reflects what's currently on the website. Cached in memory
+   so we only fetch each page once per session.
+   =========================================================== */
+const htmlDefaultsCache = {};
+async function loadDefaultsFromHtml(pageUrl) {
+  if (htmlDefaultsCache[pageUrl]) return htmlDefaultsCache[pageUrl];
+  try {
+    const res = await fetch(pageUrl, { cache: 'no-cache' });
+    if (!res.ok) { htmlDefaultsCache[pageUrl] = {}; return {}; }
+    const html = await res.text();
+    const root = new DOMParser().parseFromString(html, 'text/html');
+    const map = {};
+    root.querySelectorAll('[data-content]').forEach((el) => {
+      const key = el.getAttribute('data-content');
+      if (!key) return;
+      if (key === 'bioParagraphs') {
+        // Multi-paragraph container; skip any <p> holding a CTA button
+        map.bioParagraphs = Array.from(el.querySelectorAll('p'))
+          .filter(p => !p.querySelector('.btn'))
+          .map(p => (p.textContent || '').trim())
+          .filter(Boolean);
+      } else if (key === 'headshot' && el.tagName === 'IMG') {
+        map.headshotUrl = el.getAttribute('src') || '';
+      } else if (key === 'brokerage' && el.tagName === 'A') {
+        map.brokerage = (el.textContent || '').trim();
+        map.brokerageUrl = el.getAttribute('href') || '';
+      } else {
+        map[key] = (el.textContent || '').trim();
+      }
+    });
+    htmlDefaultsCache[pageUrl] = map;
+    return map;
+  } catch (e) {
+    console.warn('[defaults] fetch failed for', pageUrl, e && e.message);
+    htmlDefaultsCache[pageUrl] = {};
+    return {};
+  }
+}
+
+/* ===========================================================
+   INIT — runs after sign-in
+   =========================================================== */
+let initDone = false;
+function init() {
+  if (initDone) return;
+  initDone = true;
+  startListingsSubscription();
+  loadHomeForm();
+  loadAboutForm();
+  loadContactForm();
+  initEmailTemplates();
+}
+
+/* ===========================================================
+   LISTINGS LIST
+   =========================================================== */
+const listingsList = document.getElementById('listings-list');
+let listingsCache = [];
+let currentFilter = 'all';
+
+function fmtPrice(n) {
+  if (n == null || isNaN(n)) return '';
+  return '$' + Number(n).toLocaleString('en-US');
+}
+function fmtNumber(n) {
+  if (n == null || isNaN(n)) return '';
+  return Number(n).toLocaleString('en-US');
+}
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function startListingsSubscription() {
+  const q = query(collection(db, 'listings'), orderBy('listedAt', 'desc'));
+  onSnapshot(q, (snap) => {
+    listingsCache = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    renderListings();
+  }, (err) => {
+    console.warn('[listings] subscription error:', err && err.message);
+    listingsList.innerHTML = '<div class="empty-list">Could not load listings. ' + escapeHtml(err.message || '') + '</div>';
+  });
+}
+
+function renderListings() {
+  const items = currentFilter === 'all'
+    ? listingsCache.slice()
+    : listingsCache.filter(l => l.status === currentFilter);
+
+  if (!items.length) {
+    listingsList.innerHTML = '<div class="empty-list">No listings yet. Click "Add New Listing" to create one.</div>';
+    return;
+  }
+
+  listingsList.innerHTML = items.map(l => {
+    const photos = Array.isArray(l.photos) ? l.photos : [];
+    const primary = photos.find(p => p.isPrimary) || photos[0];
+    const thumb = primary && primary.url
+      ? '<img src="' + escapeHtml(primary.url) + '" alt="">'
+      : '<svg viewBox="0 0 80 60" xmlns="http://www.w3.org/2000/svg"><rect width="80" height="60" fill="#f1ece2"/><text x="40" y="35" font-size="10" fill="#a8854c" text-anchor="middle">no photo</text></svg>';
+    const addr = (l.address && l.address.street) || '(no address)';
+    const cityzip = l.address ? (l.address.city + ', ' + (l.address.state || '') + ' ' + (l.address.zip || '')) : '';
+    const price = l.status === 'sold' && l.soldPrice ? fmtPrice(l.soldPrice) : fmtPrice(l.listPrice);
+    const stats = [
+      l.beds ? l.beds + ' bd' : null,
+      l.baths ? l.baths + ' ba' : null,
+      l.sqft ? fmtNumber(l.sqft) + ' sqft' : null
+    ].filter(Boolean).join(' · ');
+    return ''
+      + '<div class="listing-row">'
+      +   '<div class="listing-row__thumb">' + thumb + '</div>'
+      +   '<div class="listing-row__main">'
+      +     '<div class="listing-row__price">'
+      +       '<span class="row-pill row-pill--' + l.status + '">' + (l.status || '') + '</span>'
+      +       price
+      +       (l.featured ? '<span class="helper-text helper-text--inline">Featured</span>' : '')
+      +     '</div>'
+      +     '<div class="listing-row__addr">' + escapeHtml(addr) + ' — ' + escapeHtml(cityzip) + '</div>'
+      +     '<div class="listing-row__stats">' + escapeHtml(stats) + '</div>'
+      +   '</div>'
+      +   '<div class="listing-row__actions">'
+      +     '<button type="button" class="btn btn--secondary btn--sm" data-edit="' + escapeHtml(l.id) + '">Edit</button>'
+      +     '<button type="button" class="btn btn--danger btn--sm" data-delete="' + escapeHtml(l.id) + '">Delete</button>'
+      +   '</div>'
+      + '</div>';
+  }).join('');
+
+  listingsList.querySelectorAll('[data-edit]').forEach(btn => {
+    btn.addEventListener('click', () => openListingDrawer(btn.getAttribute('data-edit')));
+  });
+  listingsList.querySelectorAll('[data-delete]').forEach(btn => {
+    btn.addEventListener('click', () => deleteListing(btn.getAttribute('data-delete')));
+  });
+}
+
+document.querySelectorAll('.listings-toolbar .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.listings-toolbar .chip').forEach(c => c.classList.remove('is-active'));
+    chip.classList.add('is-active');
+    currentFilter = chip.getAttribute('data-filter');
+    renderListings();
+  });
+});
+
+document.getElementById('add-listing-btn').addEventListener('click', () => openListingDrawer(null));
+
+async function deleteListing(id) {
+  const listing = listingsCache.find(l => l.id === id);
+  const label = listing && listing.address ? (listing.address.street + ', ' + listing.address.city) : id;
+  if (!confirm('Delete "' + label + '"? This cannot be undone.')) return;
+  try {
+    // Best-effort photo cleanup
+    if (listing && Array.isArray(listing.photos)) {
+      for (const p of listing.photos) {
+        if (p.storagePath) {
+          try { await deleteObject(storageRef(storage, p.storagePath)); } catch (e) { /* tolerate */ }
+        }
+      }
+    }
+    // Best-effort video cleanup
+    if (listing && listing.video && listing.video.storagePath) {
+      try { await deleteObject(storageRef(storage, listing.video.storagePath)); } catch (e) { /* tolerate */ }
+    }
+    await deleteDoc(doc(db, 'listings', id));
+    toast('Listing deleted');
+  } catch (err) {
+    toast('Delete failed: ' + (err.message || err), { error: true });
+  }
+}
+
+/* ===========================================================
+   LISTING DRAWER
+   =========================================================== */
+const drawer = document.getElementById('listing-drawer');
+const drawerBackdrop = document.getElementById('drawer-backdrop');
+let drawerEditingId = null;
+let drawerPhotos = []; // [{url, storagePath, caption?, order, isPrimary}]
+let drawerVideo = null; // {url, storagePath} | null
+let drawerFeatures = [];
+let drawerDirty = false;
+let drawerSlugManuallyEdited = false;
+
+function markDrawerDirty() { drawerDirty = true; }
+
+function openListingDrawer(id) {
+  drawerEditingId = id || null;
+  drawerDirty = false;
+  drawerSlugManuallyEdited = false;
+
+  document.getElementById('drawer-title').textContent = id ? 'Edit Listing' : 'New Listing';
+  document.getElementById('listing-delete-btn').style.display = id ? 'inline-block' : 'none';
+  document.getElementById('listing-form-error').style.display = 'none';
+
+  // Reset form
+  const f = document.getElementById('listing-form');
+  f.reset();
+  document.getElementById('listing-state').value = 'CA';
+  // f.reset() doesn't clear the Trix editor (custom element) — clear it explicitly.
+  loadDescriptionIntoEditor('');
+
+  drawerPhotos = [];
+  drawerVideo = null;
+  drawerFeatures.length = 0; // mutate in place — the feature chip widget holds this exact array by reference
+
+  // Reset uploaders
+  if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) { /* tolerate */ } videoJobUnsub = null; }
+  document.getElementById('listing-video-progress').innerHTML = '';
+
+  // Reset open houses
+  document.getElementById('listing-openhouses').innerHTML = '';
+
+  if (id) {
+    const l = listingsCache.find(x => x.id === id);
+    if (!l) {
+      toast('Listing not found', { error: true });
+      return;
+    }
+    document.getElementById('listing-id').value = l.id;
+    document.getElementById('listing-status').value = l.status || 'active';
+    document.getElementById('listing-featured').checked = !!l.featured;
+    document.getElementById('listing-listPrice').value = l.listPrice != null ? fmtNumber(l.listPrice) : '';
+    document.getElementById('listing-soldPrice').value = l.soldPrice != null ? fmtNumber(l.soldPrice) : '';
+    document.getElementById('listing-street').value = l.address && l.address.street || '';
+    document.getElementById('listing-city').value = l.address && l.address.city || '';
+    document.getElementById('listing-state').value = l.address && l.address.state || 'CA';
+    document.getElementById('listing-zip').value = l.address && l.address.zip || '';
+    document.getElementById('listing-beds').value = l.beds || '';
+    document.getElementById('listing-baths').value = l.baths || '';
+    document.getElementById('listing-halfBaths').value = l.halfBaths || '';
+    document.getElementById('listing-sqft').value = l.sqft || '';
+    document.getElementById('listing-yearBuilt').value = l.yearBuilt || '';
+    document.getElementById('listing-lotSize').value = l.lotSize || '';
+    document.getElementById('listing-mlsNumber').value = l.mlsNumber || '';
+    loadDescriptionIntoEditor(l.description || '');
+    document.getElementById('listing-slug').value = l.slug || '';
+    drawerSlugManuallyEdited = true; // assume existing slug is canon
+
+    drawerFeatures.length = 0; // keep the same array reference (see makeChipInput)
+    if (Array.isArray(l.features)) drawerFeatures.push(...l.features);
+    drawerPhotos = Array.isArray(l.photos) ? JSON.parse(JSON.stringify(l.photos)) : [];
+    drawerVideo = (l.video && l.video.url) ? JSON.parse(JSON.stringify(l.video)) : null;
+
+    (Array.isArray(l.openHouses) ? l.openHouses : []).forEach(oh => addOpenHouseRow(oh));
+  } else {
+    document.getElementById('listing-id').value = '';
+  }
+
+  renderFeatureChips();
+  renderPhotoStrip();
+  renderVideoStrip();
+  updateSoldPriceVisibility();
+
+  drawerBackdrop.classList.add('is-open');
+  drawer.classList.add('is-open');
+  drawer.setAttribute('aria-hidden', 'false');
+}
+
+function closeListingDrawer(force) {
+  if (drawerDirty && !force && !confirm('Discard changes to this listing?')) return;
+  drawerBackdrop.classList.remove('is-open');
+  drawer.classList.remove('is-open');
+  drawer.setAttribute('aria-hidden', 'true');
+  drawerDirty = false;
+  drawerEditingId = null;
+}
+
+document.getElementById('drawer-close').addEventListener('click', () => closeListingDrawer(false));
+document.getElementById('listing-cancel-btn').addEventListener('click', () => closeListingDrawer(false));
+drawerBackdrop.addEventListener('click', () => closeListingDrawer(false));
+
+// Track dirty across all drawer inputs
+document.getElementById('listing-form').addEventListener('input', markDrawerDirty);
+document.getElementById('listing-form').addEventListener('change', markDrawerDirty);
+// Trix fires trix-change (not a standard input event) — track it for dirty state,
+// but ignore the change caused by programmatically loading a listing.
+document.getElementById('listing-description-editor').addEventListener('trix-change', () => {
+  if (!descLoadingProgrammatically) markDrawerDirty();
+});
+
+// Status -> sold price visibility
+document.getElementById('listing-status').addEventListener('change', updateSoldPriceVisibility);
+function updateSoldPriceVisibility() {
+  const isSold = document.getElementById('listing-status').value === 'sold';
+  document.getElementById('listing-soldPrice-field').style.display = isSold ? '' : 'none';
+}
+
+// Slug auto-generation from street+city, unless user touched it
+['listing-street', 'listing-city'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    if (drawerSlugManuallyEdited) return;
+    const street = document.getElementById('listing-street').value;
+    const city = document.getElementById('listing-city').value;
+    document.getElementById('listing-slug').value = slugify(street + ' ' + city);
+  });
+});
+document.getElementById('listing-slug').addEventListener('input', () => { drawerSlugManuallyEdited = true; });
+
+function slugify(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+// Price formatting on blur
+['listing-listPrice', 'listing-soldPrice'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('blur', () => {
+    const n = parseInt(String(el.value).replace(/[^\d]/g, ''), 10);
+    el.value = isFinite(n) ? fmtNumber(n) : '';
+  });
+});
+
+/* ----- Open houses repeater ----- */
+function addOpenHouseRow(oh) {
+  oh = oh || { date: '', startTime: '', endTime: '' };
+  const wrap = document.getElementById('listing-openhouses');
+  const row = document.createElement('div');
+  row.className = 'oh-row';
+  row.innerHTML = ''
+    + '<div class="field"><label>Date</label><input type="date" data-oh="date" value="' + escapeHtml(oh.date || '') + '"></div>'
+    + '<div class="field"><label>Start</label><input type="text" data-oh="startTime" placeholder="1:00 PM" value="' + escapeHtml(oh.startTime || '') + '"></div>'
+    + '<div class="field"><label>End</label><input type="text" data-oh="endTime" placeholder="4:00 PM" value="' + escapeHtml(oh.endTime || '') + '"></div>'
+    + '<button type="button" class="btn btn--secondary btn--sm">Remove</button>';
+  row.querySelector('button').addEventListener('click', () => { row.remove(); markDrawerDirty(); });
+  row.querySelectorAll('input').forEach(i => i.addEventListener('input', markDrawerDirty));
+  wrap.appendChild(row);
+}
+document.getElementById('listing-add-oh').addEventListener('click', () => { addOpenHouseRow(); markDrawerDirty(); });
+
+function readOpenHouses() {
+  const rows = document.getElementById('listing-openhouses').querySelectorAll('.oh-row');
+  return Array.from(rows).map(r => ({
+    date: r.querySelector('[data-oh="date"]').value || '',
+    startTime: r.querySelector('[data-oh="startTime"]').value || '',
+    endTime: r.querySelector('[data-oh="endTime"]').value || ''
+  })).filter(oh => oh.date || oh.startTime || oh.endTime);
+}
+
+/* ----- Chip inputs (features + credentials) ----- */
+function makeChipInput(containerId, store, onChange) {
+  const container = document.getElementById(containerId);
+  const input = container.querySelector('input');
+
+  function render() {
+    // Remove existing tags
+    container.querySelectorAll('.chip-tag').forEach(t => t.remove());
+    store.forEach((tag, i) => {
+      const el = document.createElement('span');
+      el.className = 'chip-tag';
+      el.innerHTML = escapeHtml(tag) + ' <button type="button" aria-label="Remove">&times;</button>';
+      el.querySelector('button').addEventListener('click', () => {
+        store.splice(i, 1);
+        render();
+        onChange && onChange();
+      });
+      container.insertBefore(el, input);
+    });
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const v = input.value.trim();
+      if (!v) return;
+      store.push(v);
+      input.value = '';
+      render();
+      onChange && onChange();
+    } else if (e.key === 'Backspace' && !input.value && store.length) {
+      store.pop();
+      render();
+      onChange && onChange();
+    }
+  });
+
+  return { render };
+}
+
+let featureChipApi;
+function renderFeatureChips() {
+  if (!featureChipApi) featureChipApi = makeChipInput('listing-features-chips', drawerFeatures, markDrawerDirty);
+  featureChipApi.render();
+}
+
+let credChipApi;
+let aboutCredentials = [];
+function renderCredentialChips() {
+  if (!credChipApi) credChipApi = makeChipInput('about-credentials-chips', aboutCredentials, () => markDirty('about-form'));
+  credChipApi.render();
+}
+
+/* ----- Photo upload + strip ----- */
+const dropzone = document.getElementById('listing-dropzone');
+const photoInput = document.getElementById('listing-photo-input');
+const photoStrip = document.getElementById('listing-photo-strip');
+const photoProgress = document.getElementById('listing-photo-progress');
+
+['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('is-drag'); }));
+['dragleave', 'drop'].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('is-drag'); }));
+dropzone.addEventListener('drop', (e) => {
+  const files = e.dataTransfer && e.dataTransfer.files;
+  if (files && files.length) handlePhotoFiles(files);
+});
+photoInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files.length) handlePhotoFiles(e.target.files);
+});
+
+function uuid() {
+  return 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+}
+
+async function resizeImageIfNeeded(file) {
+  // AVIF is accepted but always normalized to JPEG — some email clients and
+  // older software still can't render AVIF, so we never store it as-is.
+  const isAvif = /avif/i.test(file.type) || /\.avif$/i.test(file.name);
+  if (!isAvif && file.size < 200000) return file; // small non-AVIF, skip
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) return file;
+  const maxW = 2000;
+  if (!isAvif && bitmap.width <= maxW) {
+    bitmap.close && bitmap.close();
+    return file;
+  }
+  // Downscale if wider than maxW; otherwise keep dimensions (AVIF still gets
+  // re-encoded to JPEG even when no resize is needed).
+  const ratio = bitmap.width > maxW ? maxW / bitmap.width : 1;
+  const w = Math.round(bitmap.width * ratio);
+  const h = Math.round(bitmap.height * ratio);
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(bitmap, 0, 0, w, h);
+  bitmap.close && bitmap.close();
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' }) : file);
+    }, 'image/jpeg', 0.85);
+  });
+}
+
+async function handlePhotoFiles(fileList) {
+  // Determine listingId (we need one to scope storage path). If creating new,
+  // pre-mint a doc id by creating the doc first OR use a temp folder. We'll
+  // use a temp folder keyed on a generated id and reconcile at save.
+  if (!drawerEditingId) {
+    if (!window._tempListingId) window._tempListingId = 'temp_' + Date.now();
+  }
+  const scopeId = drawerEditingId || window._tempListingId;
+  markDrawerDirty();
+
+  for (const file of fileList) {
+    if (/heic|heif/i.test(file.type) || /\.heic$/i.test(file.name)) {
+      toast('Please save your photo as JPEG before uploading.', { error: true });
+      continue;
+    }
+    const isAvifFile = /avif/i.test(file.type) || /\.avif$/i.test(file.name);
+    if (!isAvifFile && !/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      toast('Unsupported image type: ' + (file.type || file.name), { error: true });
+      continue;
+    }
+
+    const item = document.createElement('div');
+    item.className = 'upload-progress__item';
+    item.innerHTML = '<span>' + escapeHtml(file.name) + '</span><div class="upload-progress__bar"><div class="upload-progress__fill"></div></div><span class="pct">0%</span>';
+    photoProgress.appendChild(item);
+    const fill = item.querySelector('.upload-progress__fill');
+    const pct  = item.querySelector('.pct');
+
+    try {
+      const prepared = await resizeImageIfNeeded(file);
+      const ext = (prepared.type === 'image/png' ? 'png' : prepared.type === 'image/webp' ? 'webp' : 'jpg');
+      const path = 'listing-photos/' + scopeId + '/' + uuid() + '.' + ext;
+      const ref = storageRef(storage, path);
+      const task = uploadBytesResumable(ref, prepared, { contentType: prepared.type });
+      await new Promise((resolve, reject) => {
+        task.on('state_changed', (snap) => {
+          const p = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+          fill.style.width = p + '%';
+          pct.textContent = p + '%';
+        }, reject, resolve);
+      });
+      const url = await getDownloadURL(task.snapshot.ref);
+      drawerPhotos.push({
+        url,
+        storagePath: path,
+        caption: '',
+        order: drawerPhotos.length,
+        isPrimary: drawerPhotos.length === 0
+      });
+      renderPhotoStrip();
+      item.remove();
+    } catch (err) {
+      pct.textContent = 'failed';
+      console.warn('upload failed', err);
+      toast('Photo upload failed: ' + (err.message || ''), { error: true });
+    }
+  }
+}
+
+function renderPhotoStrip() {
+  drawerPhotos.sort((a, b) => (a.order || 0) - (b.order || 0));
+  photoStrip.innerHTML = drawerPhotos.map((p, i) => {
+    return ''
+      + '<div class="photo-card' + (p.isPrimary ? ' is-primary' : '') + '" draggable="true" data-idx="' + i + '">'
+      +   '<img src="' + escapeHtml(p.url) + '" alt="">'
+      +   '<div class="photo-card__actions">'
+      +     '<button type="button" class="photo-card__star' + (p.isPrimary ? ' is-on' : '') + '" data-star="' + i + '">' + (p.isPrimary ? 'Primary' : 'Set primary') + '</button>'
+      +     '<button type="button" class="photo-card__remove" data-remove="' + i + '">Remove</button>'
+      +   '</div>'
+      + '</div>';
+  }).join('');
+
+  photoStrip.querySelectorAll('[data-star]').forEach(b => {
+    b.addEventListener('click', () => {
+      const i = parseInt(b.getAttribute('data-star'), 10);
+      drawerPhotos.forEach((p, j) => { p.isPrimary = (j === i); });
+      renderPhotoStrip();
+      markDrawerDirty();
+    });
+  });
+  photoStrip.querySelectorAll('[data-remove]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const i = parseInt(b.getAttribute('data-remove'), 10);
+      const photo = drawerPhotos[i];
+      if (!confirm('Remove this photo?')) return;
+      if (photo && photo.storagePath) {
+        try { await deleteObject(storageRef(storage, photo.storagePath)); } catch (e) { /* tolerate */ }
+      }
+      drawerPhotos.splice(i, 1);
+      // If we removed primary, promote first remaining
+      if (drawerPhotos.length && !drawerPhotos.some(p => p.isPrimary)) drawerPhotos[0].isPrimary = true;
+      drawerPhotos.forEach((p, j) => { p.order = j; });
+      renderPhotoStrip();
+      markDrawerDirty();
+    });
+  });
+
+  // Drag-to-reorder
+  let dragSrc = null;
+  photoStrip.querySelectorAll('.photo-card').forEach(card => {
+    card.addEventListener('dragstart', () => { dragSrc = card; card.classList.add('is-dragging'); });
+    card.addEventListener('dragend',   () => { card.classList.remove('is-dragging'); dragSrc = null; });
+    card.addEventListener('dragover',  (e) => { e.preventDefault(); });
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!dragSrc || dragSrc === card) return;
+      const from = parseInt(dragSrc.getAttribute('data-idx'), 10);
+      const to   = parseInt(card.getAttribute('data-idx'), 10);
+      const moved = drawerPhotos.splice(from, 1)[0];
+      drawerPhotos.splice(to, 0, moved);
+      drawerPhotos.forEach((p, j) => { p.order = j; });
+      renderPhotoStrip();
+      markDrawerDirty();
+    });
+  });
+}
+
+/* ----- Listing video upload ----- */
+const VIDEO_MAX_BYTES = 200 * 1024 * 1024; // 200 MB uploader cap (server compresses to <10 MB)
+let videoJobUnsub = null; // active onSnapshot unsubscribe for the in-flight compress job
+const videoDropzone = document.getElementById('listing-video-dropzone');
+const videoInput = document.getElementById('listing-video-input');
+const videoStrip = document.getElementById('listing-video-strip');
+const videoProgress = document.getElementById('listing-video-progress');
+
+['dragenter', 'dragover'].forEach(ev => videoDropzone.addEventListener(ev, e => { e.preventDefault(); videoDropzone.classList.add('is-drag'); }));
+['dragleave', 'drop'].forEach(ev => videoDropzone.addEventListener(ev, e => { e.preventDefault(); videoDropzone.classList.remove('is-drag'); }));
+videoDropzone.addEventListener('drop', (e) => {
+  const files = e.dataTransfer && e.dataTransfer.files;
+  if (files && files.length) handleVideoFile(files[0]);
+});
+videoInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files.length) handleVideoFile(e.target.files[0]);
+  videoInput.value = ''; // allow re-selecting the same file after a remove
+});
+
+const VIDEO_EXT_BY_TYPE = {
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm'
+};
+
+async function handleVideoFile(file) {
+  if (!VIDEO_EXT_BY_TYPE[file.type]) {
+    toast('Please upload an MP4, MOV, or WebM video.', { error: true });
+    return;
+  }
+  if (file.size > VIDEO_MAX_BYTES) {
+    toast('Video is ' + (file.size / 1048576).toFixed(1) + ' MB — the limit is 200 MB.', { error: true });
+    return;
+  }
+
+  if (!drawerEditingId) {
+    if (!window._tempListingId) window._tempListingId = 'temp_' + Date.now();
+  }
+  const scopeId = drawerEditingId || window._tempListingId;
+  markDrawerDirty();
+
+  // Tear down any prior in-flight compress job before starting a new one.
+  if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) { /* tolerate */ } videoJobUnsub = null; }
+
+  const oldPath = drawerVideo && drawerVideo.storagePath;
+
+  const item = document.createElement('div');
+  item.className = 'upload-progress__item';
+  item.innerHTML = '<span>' + escapeHtml(file.name) + '</span><div class="upload-progress__bar"><div class="upload-progress__fill"></div></div><span class="pct">0%</span>';
+  videoProgress.appendChild(item);
+  const fill = item.querySelector('.upload-progress__fill');
+  const pct  = item.querySelector('.pct');
+
+  try {
+    // 1. Create the job doc so the function has somewhere to report back.
+    const jobId = uuid();
+    const jobRef = doc(collection(db, 'videoJobs'), jobId);
+    await setDoc(jobRef, {
+      status: 'processing',
+      scopeId,
+      createdAt: serverTimestamp()
+    });
+
+    // 2. Upload the raw original; the function triggers on this path prefix.
+    const ext = VIDEO_EXT_BY_TYPE[file.type] || 'mp4';
+    const rawPath = 'listing-video-raw/' + scopeId + '/' + jobId + '.' + ext;
+    const ref = storageRef(storage, rawPath);
+    const task = uploadBytesResumable(ref, file, {
+      contentType: file.type,
+      customMetadata: { jobId, scopeId }
+    });
+    await new Promise((resolve, reject) => {
+      task.on('state_changed', (snap) => {
+        const p = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        fill.style.width = p + '%';
+        pct.textContent = p + '%';
+      }, reject, resolve);
+    });
+
+    // 3. Upload done — now the server is compressing. Show that state and
+    //    listen for the job result. Replacing an existing video happens once
+    //    the new one resolves (below), so the old preview stays until then.
+    item.querySelector('span:last-child').textContent = '';
+    pct.textContent = 'Compressing video…';
+    fill.style.width = '100%';
+
+    videoJobUnsub = onSnapshot(jobRef, (snap) => {
+      if (!snap.exists()) return;
+      const job = snap.data() || {};
+      if (job.status === 'done') {
+        drawerVideo = { url: job.url, storagePath: job.storagePath };
+        // Clean up the previously-saved compressed file we're replacing.
+        if (oldPath && oldPath !== job.storagePath) {
+          deleteObject(storageRef(storage, oldPath)).catch(() => { /* tolerate */ });
+        }
+        renderVideoStrip();
+        item.remove();
+        markDrawerDirty();
+        if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) {} videoJobUnsub = null; }
+      } else if (job.status === 'error') {
+        toast('Video processing failed: ' + (job.message || 'unknown error'), { error: true });
+        item.remove();
+        if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) {} videoJobUnsub = null; }
+      }
+    }, (err) => {
+      console.warn('video job listener failed', err);
+      toast('Lost connection to the video processor: ' + (err.message || ''), { error: true });
+      item.remove();
+      if (videoJobUnsub) { try { videoJobUnsub(); } catch (e) {} videoJobUnsub = null; }
+    });
+  } catch (err) {
+    pct.textContent = 'failed';
+    console.warn('video upload failed', err);
+    toast('Video upload failed: ' + (err.message || ''), { error: true });
+  }
+}
+
+function renderVideoStrip() {
+  if (!drawerVideo || !drawerVideo.url) {
+    videoStrip.innerHTML = '';
+    return;
+  }
+  videoStrip.innerHTML = ''
+    + '<div class="video-card">'
+    +   '<video src="' + escapeHtml(drawerVideo.url) + '" muted controls preload="metadata" playsinline></video>'
+    +   '<button type="button" class="photo-card__remove" id="listing-video-remove">Remove video</button>'
+    + '</div>';
+  document.getElementById('listing-video-remove').addEventListener('click', async () => {
+    if (!confirm('Remove this video?')) return;
+    if (drawerVideo && drawerVideo.storagePath) {
+      try { await deleteObject(storageRef(storage, drawerVideo.storagePath)); } catch (e) { /* tolerate */ }
+    }
+    drawerVideo = null;
+    renderVideoStrip();
+    markDrawerDirty();
+  });
+}
+
+/* ----- Save listing ----- */
+document.getElementById('listing-save-btn').addEventListener('click', saveListing);
+document.getElementById('listing-delete-btn').addEventListener('click', async () => {
+  if (drawerEditingId) {
+    await deleteListing(drawerEditingId);
+    closeListingDrawer(true);
+  }
+});
+
+async function saveListing() {
+  const errorBox = document.getElementById('listing-form-error');
+  errorBox.style.display = 'none';
+
+  const street = document.getElementById('listing-street').value.trim();
+  const city = document.getElementById('listing-city').value.trim();
+  if (!street || !city) return showFormError('Please enter at least street and city.');
+
+  const slugVal = document.getElementById('listing-slug').value.trim() || slugify(street + ' ' + city);
+
+  // Slug uniqueness check against cache (other docs)
+  const dupe = listingsCache.find(l => l.slug === slugVal && l.id !== drawerEditingId);
+  if (dupe) return showFormError('Slug already in use by another listing. Please edit the slug to be unique.');
+
+  const parsePrice = (id) => {
+    const v = document.getElementById(id).value;
+    const n = parseInt(String(v).replace(/[^\d]/g, ''), 10);
+    return isFinite(n) ? n : null;
+  };
+  const parseNum = (id) => {
+    const v = document.getElementById(id).value;
+    const n = parseFloat(v);
+    return isFinite(n) ? n : null;
+  };
+
+  const status = document.getElementById('listing-status').value;
+  const payload = {
+    status,
+    featured: document.getElementById('listing-featured').checked,
+    listPrice: parsePrice('listing-listPrice'),
+    soldPrice: status === 'sold' ? parsePrice('listing-soldPrice') : null,
+    address: {
+      street,
+      city,
+      state: document.getElementById('listing-state').value.trim() || 'CA',
+      zip: document.getElementById('listing-zip').value.trim() || ''
+    },
+    beds: parseNum('listing-beds') || 0,
+    baths: parseNum('listing-baths') || 0,
+    halfBaths: parseNum('listing-halfBaths'),
+    sqft: parseNum('listing-sqft') || 0,
+    lotSize: document.getElementById('listing-lotSize').value.trim() || null,
+    yearBuilt: parseNum('listing-yearBuilt'),
+    mlsNumber: document.getElementById('listing-mlsNumber').value.trim() || null,
+    description: readDescriptionHtml(),
+    features: drawerFeatures.slice(),
+    photos: drawerPhotos.slice(),
+    video: drawerVideo ? { url: drawerVideo.url, storagePath: drawerVideo.storagePath } : null,
+    openHouses: readOpenHouses(),
+    slug: slugVal,
+    soldAt: status === 'sold' ? (Timestamp.now()) : null
+  };
+
+  try {
+    if (drawerEditingId) {
+      // Don't overwrite listedAt on edits
+      await updateDoc(doc(db, 'listings', drawerEditingId), payload);
+    } else {
+      payload.listedAt = serverTimestamp();
+      const ref = await addDoc(collection(db, 'listings'), payload);
+      // If we used a temp scope id, the photos already uploaded to that path.
+      // That's fine — they live there permanently; storagePath points to the
+      // canonical location for delete-on-removal. Future uploads in this same
+      // drawer session will use the new doc id.
+      drawerEditingId = ref.id;
+    }
+    drawerDirty = false;
+    closeListingDrawer(true);
+    toast('Saved');
+  } catch (err) {
+    showFormError('Save failed: ' + (err.message || err));
+  }
+
+  function showFormError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = 'block';
+  }
+}
+
+/* ===========================================================
+   HOME FORM
+   =========================================================== */
+async function loadHomeForm() {
+  try {
+    const [snap, fromHtml] = await Promise.all([
+      getDoc(doc(db, 'siteContent', 'home')),
+      loadDefaultsFromHtml('index.html')
+    ]);
+    const data = snap.exists() ? snap.data() : {};
+    document.getElementById('home-heroHeadline').value = data.heroHeadline || fromHtml.heroHeadline || 'Marie Borders';
+    document.getElementById('home-heroSubhead').value  = data.heroSubhead  || fromHtml.heroSubhead  || 'Marin County Real Estate';
+    document.getElementById('home-introHeading').value = data.introHeading || fromHtml.introHeading || 'Currently Featured';
+    document.getElementById('home-introBody').value    = data.introBody    || fromHtml.introBody    || '';
+    dirtyForms.delete('home-form');
+  } catch (e) {
+    console.warn('home load failed:', e.message);
+  }
+}
+
+document.getElementById('home-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    heroHeadline: document.getElementById('home-heroHeadline').value.trim(),
+    heroSubhead:  document.getElementById('home-heroSubhead').value.trim(),
+    introHeading: document.getElementById('home-introHeading').value.trim(),
+    introBody:    document.getElementById('home-introBody').value.trim()
+  };
+  try {
+    await setDoc(doc(db, 'siteContent', 'home'), payload, { merge: true });
+    dirtyForms.delete('home-form');
+    toast('Saved');
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+  }
+});
+
+/* ===========================================================
+   ABOUT FORM
+   =========================================================== */
+async function loadAboutForm() {
+  try {
+    const [snap, fromHtml] = await Promise.all([
+      getDoc(doc(db, 'siteContent', 'about')),
+      loadDefaultsFromHtml('about.html')
+    ]);
+    const data = snap.exists() ? snap.data() : {};
+    document.getElementById('about-pageHeading').value = data.pageHeading || fromHtml.pageHeading || 'Get to Know Me';
+
+    const bios = Array.isArray(data.bioParagraphs) && data.bioParagraphs.length
+      ? data.bioParagraphs
+      : (Array.isArray(fromHtml.bioParagraphs) && fromHtml.bioParagraphs.length
+          ? fromHtml.bioParagraphs
+          : []);
+    document.getElementById('about-bio1').value = bios[0] || '';
+    document.getElementById('about-bio2').value = bios[1] || '';
+    document.getElementById('about-bio3').value = bios[2] || '';
+
+    aboutCredentials = Array.isArray(data.credentials) ? data.credentials.slice() : [
+      'Real Estate Associate', 'Licensed Since 1999', 'DRE #01256719', 'Marin County Native'
+    ];
+    renderCredentialChips();
+
+    const headshotSrc = data.headshotUrl || fromHtml.headshotUrl || '';
+    if (headshotSrc) {
+      document.getElementById('about-headshot-preview').src = headshotSrc;
+    }
+    dirtyForms.delete('about-form');
+  } catch (e) {
+    console.warn('about load failed:', e.message);
+  }
+}
+
+document.getElementById('about-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    pageHeading: document.getElementById('about-pageHeading').value.trim(),
+    bioParagraphs: [
+      document.getElementById('about-bio1').value.trim(),
+      document.getElementById('about-bio2').value.trim(),
+      document.getElementById('about-bio3').value.trim()
+    ].filter(Boolean),
+    credentials: aboutCredentials.slice()
+  };
+  // Preserve any existing headshotUrl
+  try {
+    const existing = await getDoc(doc(db, 'siteContent', 'about'));
+    if (existing.exists() && existing.data().headshotUrl) {
+      payload.headshotUrl = existing.data().headshotUrl;
+    }
+    await setDoc(doc(db, 'siteContent', 'about'), payload, { merge: true });
+    dirtyForms.delete('about-form');
+    toast('Saved');
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+  }
+});
+
+document.getElementById('about-headshot-replace').addEventListener('click', () => {
+  document.getElementById('about-headshot-input').click();
+});
+document.getElementById('about-headshot-input').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const isAvifHeadshot = /avif/i.test(file.type) || /\.avif$/i.test(file.name);
+  if (!isAvifHeadshot && !/^image\/(jpeg|png|webp)$/.test(file.type)) {
+    toast('Unsupported image type', { error: true });
+    return;
+  }
+  const progress = document.getElementById('about-headshot-progress');
+  progress.innerHTML = '<div class="upload-progress__item"><span>' + escapeHtml(file.name) + '</span><div class="upload-progress__bar"><div class="upload-progress__fill"></div></div><span class="pct">0%</span></div>';
+  const fill = progress.querySelector('.upload-progress__fill');
+  const pct  = progress.querySelector('.pct');
+  try {
+    const prepared = await resizeImageIfNeeded(file);
+    const ext = (prepared.type === 'image/png' ? 'png' : prepared.type === 'image/webp' ? 'webp' : 'jpg');
+    const path = 'site/headshot.' + ext;
+    const ref = storageRef(storage, path);
+    const task = uploadBytesResumable(ref, prepared, { contentType: prepared.type });
+    await new Promise((resolve, reject) => {
+      task.on('state_changed', (snap) => {
+        const p = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+        fill.style.width = p + '%';
+        pct.textContent = p + '%';
+      }, reject, resolve);
+    });
+    const url = await getDownloadURL(task.snapshot.ref);
+    await setDoc(doc(db, 'siteContent', 'about'), { headshotUrl: url }, { merge: true });
+    document.getElementById('about-headshot-preview').src = url;
+    progress.innerHTML = '';
+    toast('Headshot updated');
+  } catch (err) {
+    toast('Headshot upload failed: ' + (err.message || ''), { error: true });
+  }
+});
+
+/* ===========================================================
+   CONTACT FORM
+   =========================================================== */
+async function loadContactForm() {
+  try {
+    const [snap, fromHtml] = await Promise.all([
+      getDoc(doc(db, 'siteContent', 'contact')),
+      loadDefaultsFromHtml('contact.html')
+    ]);
+    const data = snap.exists() ? snap.data() : {};
+    document.getElementById('contact-displayEmail').value = data.displayEmail || fromHtml.displayEmail || 'marie@marinsfinest.com';
+    document.getElementById('contact-phone').value        = data.phone        || fromHtml.phone        || '(415) 601-1715';
+    document.getElementById('contact-license').value      = data.license      || fromHtml.license      || 'DRE #01256719';
+    document.getElementById('contact-brokerage').value    = data.brokerage    || fromHtml.brokerage    || "Marin's Finest";
+    document.getElementById('contact-brokerageUrl').value = data.brokerageUrl || fromHtml.brokerageUrl || 'https://marinsfinest.com';
+    dirtyForms.delete('contact-form-cms');
+  } catch (e) {
+    console.warn('contact load failed:', e.message);
+  }
+}
+
+document.getElementById('contact-form-cms').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    displayEmail: document.getElementById('contact-displayEmail').value.trim(),
+    phone:        document.getElementById('contact-phone').value.trim(),
+    license:      document.getElementById('contact-license').value.trim(),
+    brokerage:    document.getElementById('contact-brokerage').value.trim(),
+    brokerageUrl: document.getElementById('contact-brokerageUrl').value.trim()
+  };
+  try {
+    await setDoc(doc(db, 'siteContent', 'contact'), payload, { merge: true });
+    dirtyForms.delete('contact-form-cms');
+    toast('Saved');
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+  }
+});
+
+/* ===========================================================
+   EMAIL TEMPLATES PANEL
+   =========================================================== */
+const ET = window.MB && window.MB.emailTemplates;
+// etState[id] = { customized: bool, subject: string, bodyHtml: string, enabled: bool }
+const etState = {};
+let etCurrentId = null;
+let etInitialized = false;
+
+const etListEl       = document.getElementById('et-list');
+const etEmptyEl      = document.getElementById('et-empty');
+const etEditEl       = document.getElementById('et-edit');
+const etTitleEl      = document.getElementById('et-title');
+const etDescriptionEl= document.getElementById('et-description');
+const etEnabledEl    = document.getElementById('et-enabled');
+const etSubjectEl    = document.getElementById('et-subject');
+const etBodyEl       = document.getElementById('et-body');
+const etVarsTableEl  = document.getElementById('et-vars-table');
+const etPreviewSubject = document.getElementById('et-preview-subject');
+const etPreviewBody    = document.getElementById('et-preview-body');
+const etPreviewAudience= document.getElementById('et-preview-audience');
+const etSaveBtn        = document.getElementById('et-save-btn');
+const etCancelBtn      = document.getElementById('et-cancel-btn');
+const etResetBtn       = document.getElementById('et-reset-btn');
+const etCustomizedNote = document.getElementById('et-customized-note');
+
+const ET_GROUP_ORDER = [
+  { type: 'contactInquiry', label: 'Contact Form' },
+  { type: 'wishList',       label: 'Marin Wish List' },
+  { type: 'homeValuation',  label: 'Home Valuation' },
+  { type: 'openHouseRSVP',  label: 'Open House RSVP' },
+  { type: 'guideDownload',  label: 'Guide Download' }
+];
+
+function initEmailTemplates() {
+  if (etInitialized) return;
+  etInitialized = true;
+  if (!ET) {
+    console.warn('[email-templates] MB.emailTemplates not loaded');
+    return;
+  }
+  loadAllTemplates();
+}
+
+async function loadAllTemplates() {
+  const ids = Object.keys(ET.defaults);
+  const reads = ids.map(async (id) => {
+    try {
+      const snap = await getDoc(doc(db, 'emailTemplates', id));
+      if (snap.exists()) {
+        const d = snap.data() || {};
+        etState[id] = {
+          customized: true,
+          subject: d.subject != null ? d.subject : ET.defaults[id].subject,
+          bodyHtml: d.bodyHtml != null ? d.bodyHtml : ET.defaults[id].bodyHtml,
+          enabled: d.enabled !== false
+        };
+      } else {
+        etState[id] = {
+          customized: false,
+          subject: ET.defaults[id].subject,
+          bodyHtml: ET.defaults[id].bodyHtml,
+          enabled: ET.defaults[id].enabled !== false
+        };
+      }
+    } catch (err) {
+      console.warn('[email-templates] load failed for', id, err && err.message);
+      etState[id] = {
+        customized: false,
+        subject: ET.defaults[id].subject,
+        bodyHtml: ET.defaults[id].bodyHtml,
+        enabled: true
+      };
+    }
+  });
+  await Promise.all(reads);
+  renderTemplateList();
+}
+
+function renderTemplateList() {
+  const html = ET_GROUP_ORDER.map(group => {
+    const adminId   = group.type + '_admin';
+    const visitorId = group.type + '_visitor';
+    function itemHtml(id) {
+      const m = ET.meta[id];
+      if (!m) return '';
+      const state = etState[id] || {};
+      const isActive = (id === etCurrentId);
+      const audienceLabel = m.audience === 'admin' ? 'To Marie' : 'To Visitor';
+      const customizedBadge = state.customized ? '<span class="et-item__customized">●</span>' : '';
+      const disabledBadge = state.enabled === false ? ' <span style="opacity:0.7;font-size:0.72rem;">(off)</span>' : '';
+      return '<button class="et-item' + (isActive ? ' is-active' : '') + '" type="button" data-template="' + id + '">'
+        + '<span class="et-item__type">' + escapeHtml(audienceLabel) + customizedBadge + '</span>'
+        + escapeHtml(m.label.split('—').slice(1).join('—').trim() || m.label)
+        + disabledBadge
+        + '</button>';
+    }
+    return '<div class="et-group">'
+      + '<div class="et-group__label">' + escapeHtml(group.label) + '</div>'
+      + itemHtml(adminId)
+      + itemHtml(visitorId)
+      + '</div>';
+  }).join('');
+  etListEl.innerHTML = html;
+  etListEl.querySelectorAll('[data-template]').forEach(btn => {
+    btn.addEventListener('click', () => selectTemplate(btn.getAttribute('data-template')));
+  });
+}
+
+function selectTemplate(id) {
+  if (etDirty && !confirm('Discard unsaved changes to this template?')) return;
+  etDirty = false;
+  etCurrentId = id;
+  const m = ET.meta[id];
+  const state = etState[id];
+  if (!m || !state) return;
+
+  etEmptyEl.style.display = 'none';
+  etEditEl.style.display = 'block';
+  etTitleEl.textContent = m.label;
+  etDescriptionEl.textContent = m.description;
+  etEnabledEl.checked = state.enabled !== false;
+  etSubjectEl.value = state.subject || '';
+  etBodyEl.value = state.bodyHtml || '';
+  etCustomizedNote.style.display = state.customized ? 'block' : 'none';
+  etPreviewAudience.textContent = m.audience === 'admin' ? 'as seen by Marie' : 'as seen by the visitor';
+
+  // Render variable reference
+  const vars = ET.variablesFor(id);
+  etVarsTableEl.innerHTML = vars.map(v =>
+    '<tr><td>{{' + escapeHtml(v.key) + '}}</td><td>' + escapeHtml(v.desc) + '</td></tr>'
+  ).join('');
+
+  // Highlight in list
+  renderTemplateList();
+  renderPreview();
+}
+
+function renderPreview() {
+  if (!etCurrentId) return;
+  const subject = etSubjectEl.value || '';
+  const body = etBodyEl.value || '';
+  const sample = ET.sampleVarsFor(etCurrentId);
+  etPreviewSubject.textContent = ET.renderText(subject, sample);
+  etPreviewBody.innerHTML = ET.render(body, sample);
+}
+
+function markEtDirty() { etDirty = true; }
+
+etSubjectEl.addEventListener('input', () => { markEtDirty(); renderPreview(); });
+etBodyEl.addEventListener('input',    () => { markEtDirty(); renderPreview(); });
+etEnabledEl.addEventListener('change', markEtDirty);
+
+etSaveBtn.addEventListener('click', async () => {
+  if (!etCurrentId) return;
+  const payload = {
+    subject: etSubjectEl.value || '',
+    bodyHtml: etBodyEl.value || '',
+    enabled: etEnabledEl.checked,
+    updatedAt: serverTimestamp(),
+    updatedBy: (auth.currentUser && auth.currentUser.uid) || null
+  };
+  etSaveBtn.disabled = true;
+  etSaveBtn.textContent = 'Saving…';
+  try {
+    await setDoc(doc(db, 'emailTemplates', etCurrentId), payload, { merge: true });
+    etState[etCurrentId] = {
+      customized: true,
+      subject: payload.subject,
+      bodyHtml: payload.bodyHtml,
+      enabled: payload.enabled
+    };
+    etDirty = false;
+    etCustomizedNote.style.display = 'block';
+    renderTemplateList();
+    toast('Template saved');
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+  } finally {
+    etSaveBtn.disabled = false;
+    etSaveBtn.textContent = 'Save';
+  }
+});
+
+etCancelBtn.addEventListener('click', () => {
+  if (!etCurrentId) return;
+  if (etDirty && !confirm('Discard your changes to this template?')) return;
+  const state = etState[etCurrentId];
+  etEnabledEl.checked = state.enabled !== false;
+  etSubjectEl.value = state.subject || '';
+  etBodyEl.value = state.bodyHtml || '';
+  etDirty = false;
+  renderPreview();
+});
+
+etResetBtn.addEventListener('click', async () => {
+  if (!etCurrentId) return;
+  if (!confirm('Reset this template to the default? Your custom version will be deleted.')) return;
+  try {
+    await deleteDoc(doc(db, 'emailTemplates', etCurrentId));
+    etState[etCurrentId] = {
+      customized: false,
+      subject: ET.defaults[etCurrentId].subject,
+      bodyHtml: ET.defaults[etCurrentId].bodyHtml,
+      enabled: ET.defaults[etCurrentId].enabled !== false
+    };
+    etDirty = false;
+    selectTemplate(etCurrentId); // re-render editor with defaults
+    toast('Reset to default');
+  } catch (err) {
+    toast('Reset failed: ' + (err.message || err), { error: true });
+  }
+});
+
+/* ===========================================================
+   EMAIL LOG PANEL
+   =========================================================== */
+const EL_TYPE_LABELS = {
+  contactInquiry:  'Contact',
+  wishList:        'Wish List',
+  homeValuation:   'Home Value',
+  openHouseRSVP:   'RSVP',
+  guideDownload:   'Guide'
+};
+
+let elCache = [];
+let elFilterStatus = 'all';
+let elFilterType   = 'all';
+let elInitialized  = false;
+
+const elRowsEl       = document.getElementById('el-rows');
+const elRefreshBtn   = document.getElementById('el-refresh-btn');
+const elBackdrop     = document.getElementById('el-detail-backdrop');
+const elDetailClose  = document.getElementById('el-detail-close');
+
+function elFormatWhen(ts) {
+  if (!ts || typeof ts.toDate !== 'function') return '';
+  const d = ts.toDate();
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) {
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
+    ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function elFormatWhenFull(ts) {
+  if (!ts || typeof ts.toDate !== 'function') return '';
+  return ts.toDate().toLocaleString('en-US', {
+    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', second: '2-digit'
+  });
+}
+
+function elRender() {
+  let items = elCache.slice();
+  if (elFilterStatus !== 'all') items = items.filter(r => r.status === elFilterStatus);
+  if (elFilterType   !== 'all') items = items.filter(r => r.inquiryType === elFilterType);
+
+  if (!items.length) {
+    elRowsEl.innerHTML = '<div class="el-empty">No emails match these filters.</div>';
+    return;
+  }
+
+  elRowsEl.innerHTML = items.map(r => {
+    const when = elFormatWhen(r.sentAt);
+    const to = r.recipient || '—';
+    const subj = r.subject || (r.status === 'skipped' ? '(template disabled)' : '');
+    const typeLabel = EL_TYPE_LABELS[r.inquiryType] || r.inquiryType || '—';
+    const audLabel = r.audience === 'admin' ? 'Marie' : 'Visitor';
+    return ''
+      + '<div class="el-row" data-el-id="' + escapeHtml(r.id) + '">'
+      +   '<div>' + escapeHtml(when) + '</div>'
+      +   '<div class="el-cell--ellipsis">' + escapeHtml(to) + '</div>'
+      +   '<div class="el-cell--ellipsis el-cell--hide-mobile">' + escapeHtml(subj) + '</div>'
+      +   '<div class="el-cell--hide-mobile">' + escapeHtml(typeLabel) + '</div>'
+      +   '<div class="el-audience el-cell--hide-mobile">' + escapeHtml(audLabel) + '</div>'
+      +   '<div><span class="el-status el-status--' + r.status + '">' + r.status + '</span></div>'
+      + '</div>';
+  }).join('');
+
+  elRowsEl.querySelectorAll('[data-el-id]').forEach(row => {
+    row.addEventListener('click', () => elOpenDetail(row.getAttribute('data-el-id')));
+  });
+}
+
+async function elLoad() {
+  try {
+    elRowsEl.innerHTML = '<div class="el-empty">Loading…</div>';
+    const q = query(collection(db, 'emailLog'), orderBy('sentAt', 'desc'));
+    const snap = await getDocs(q);
+    elCache = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    elRender();
+  } catch (err) {
+    console.warn('[email-log] load failed:', err && err.message);
+    elRowsEl.innerHTML = '<div class="el-empty" style="color:#7a3134;">Could not load log: ' + escapeHtml(err.message || '') + '</div>';
+  }
+}
+
+function elOpenDetail(id) {
+  const entry = elCache.find(e => e.id === id);
+  if (!entry) return;
+  document.getElementById('el-detail-title').textContent = entry.subject || '(no subject)';
+  document.getElementById('el-detail-to').textContent = entry.recipient || '—';
+  document.getElementById('el-detail-replyto').textContent = entry.replyTo || '—';
+  document.getElementById('el-detail-bcc').textContent = entry.bcc || '—';
+  document.getElementById('el-detail-when').textContent = elFormatWhenFull(entry.sentAt);
+  document.getElementById('el-detail-status').innerHTML =
+    '<span class="el-status el-status--' + entry.status + '">' + entry.status + '</span>';
+
+  const errWrap = document.getElementById('el-detail-error-wrap');
+  if (entry.error) {
+    errWrap.innerHTML = '<div class="el-detail__error"><strong>Error:</strong> ' + escapeHtml(entry.error) + '</div>';
+  } else {
+    errWrap.innerHTML = '';
+  }
+  document.getElementById('el-detail-body').innerHTML = entry.bodyHtml || '<em style="color:var(--ink-muted);">No body (template was disabled or send was skipped).</em>';
+
+  elBackdrop.classList.add('is-open');
+  elBackdrop.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+}
+
+function elCloseDetail() {
+  elBackdrop.classList.remove('is-open');
+  elBackdrop.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
+
+elDetailClose.addEventListener('click', elCloseDetail);
+elBackdrop.addEventListener('click', (e) => { if (e.target === e.currentTarget) elCloseDetail(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && elBackdrop.classList.contains('is-open')) elCloseDetail();
+});
+
+document.querySelectorAll('[data-el-status]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-el-status]').forEach(b => b.classList.toggle('is-active', b === btn));
+    elFilterStatus = btn.getAttribute('data-el-status');
+    elRender();
+  });
+});
+
+document.querySelectorAll('[data-el-type]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-el-type]').forEach(b => b.classList.toggle('is-active', b === btn));
+    elFilterType = btn.getAttribute('data-el-type');
+    elRender();
+  });
+});
+
+elRefreshBtn.addEventListener('click', elLoad);
+
+// Lazy-load when the Email Log tab is first opened
+document.querySelectorAll('.cms-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.getAttribute('data-tab') === 'emaillog' && !elInitialized) {
+      elInitialized = true;
+      elLoad();
+    }
+  });
+});
+
+/* ===========================================================
+   GUIDES EDITOR PANEL
+   =========================================================== */
+const GC_DEFAULTS = (window.MB && window.MB.guideDefaults) || { buyer: null, seller: null };
+const GC_PREVIEW_URLS = {
+  buyer:  'assets/guides/marin-buyers-guide.html',
+  seller: 'assets/guides/marin-sellers-guide.html'
+};
+const GC_TYPE_LABELS = {
+  h2: 'Section heading',
+  h3: 'Sub-heading',
+  p:  'Paragraph',
+  quote: 'Pull quote',
+  ol: 'Numbered list',
+  ul: 'Bullet list',
+  step: 'Step card'
+};
+
+// gcState[which] = { customized, data: { title, eyebrow, coverLede, sections, closingTitle, closingBody } }
+const gcState = { buyer: null, seller: null };
+let gcWhich = 'buyer';
+let gcDirty = false;
+let gcInitialized = false;
+let gcLoadInFlight = false;
+
+const gcTitleEl       = document.getElementById('gc-title');
+const gcEyebrowEl     = document.getElementById('gc-eyebrow');
+const gcCoverLedeEl   = document.getElementById('gc-coverLede');
+const gcSectionsEl    = document.getElementById('gc-sections');
+const gcClosingTitleEl= document.getElementById('gc-closingTitle');
+const gcClosingBodyEl = document.getElementById('gc-closingBody');
+const gcAddTypeEl     = document.getElementById('gc-add-type');
+const gcAddBtnEl      = document.getElementById('gc-add-btn');
+const gcSaveBtnEl     = document.getElementById('gc-save-btn');
+const gcCancelBtnEl   = document.getElementById('gc-cancel-btn');
+const gcResetBtnEl    = document.getElementById('gc-reset-btn');
+const gcPreviewLinkEl = document.getElementById('gc-preview-link');
+const gcCustomizedEl  = document.getElementById('gc-customized-note');
+
+function gcCloneDefault(which) {
+  // Deep-clone default so editor mutations don't pollute the constants.
+  const d = GC_DEFAULTS[which];
+  if (!d) return { title: '', eyebrow: '', coverLede: '', sections: [], closingTitle: '', closingBody: '' };
+  return JSON.parse(JSON.stringify(d));
+}
+
+async function gcLoadOne(which) {
+  try {
+    const snap = await getDoc(doc(db, 'guides', which));
+    if (snap.exists()) {
+      const d = snap.data() || {};
+      const hasContent = d.title || d.eyebrow || d.coverLede || (Array.isArray(d.sections) && d.sections.length);
+      if (hasContent) {
+        gcState[which] = { customized: true, data: {
+          title: d.title || '',
+          eyebrow: d.eyebrow || '',
+          coverLede: d.coverLede || '',
+          sections: Array.isArray(d.sections) ? d.sections : [],
+          closingTitle: d.closingTitle || '',
+          closingBody: d.closingBody || ''
+        }};
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('[guides] load failed for', which, err && err.message);
+  }
+  gcState[which] = { customized: false, data: gcCloneDefault(which) };
+}
+
+async function initGuides() {
+  if (gcInitialized || gcLoadInFlight) return;
+  gcLoadInFlight = true;
+  try {
+    await Promise.all([gcLoadOne('buyer'), gcLoadOne('seller')]);
+    gcInitialized = true;
+    gcRender();
+  } finally {
+    gcLoadInFlight = false;
+  }
+}
+
+function gcMarkDirty() { gcDirty = true; }
+
+function gcEscape(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function gcSectionFieldsHtml(section, idx) {
+  switch (section.type) {
+    case 'h2':
+    case 'h3':
+      return '<div class="field"><label>Heading text</label>'
+        + '<input type="text" data-gc-field="text" data-gc-idx="' + idx + '" value="' + gcEscape(section.text || '') + '">'
+        + '</div>';
+    case 'p':
+      return '<div class="field"><label>Paragraph text</label>'
+        + '<textarea data-gc-field="text" data-gc-idx="' + idx + '" rows="4">' + gcEscape(section.text || '') + '</textarea>'
+        + '<p class="gc-section-card__help">Use <code>**bold**</code> and <code>*italic*</code> around words to emphasize.</p>'
+        + '</div>';
+    case 'quote':
+      return '<div class="field"><label>Quote text</label>'
+        + '<textarea data-gc-field="text" data-gc-idx="' + idx + '" rows="3">' + gcEscape(section.text || '') + '</textarea>'
+        + '<p class="gc-section-card__help">Renders as a styled italic block with a gold left border.</p>'
+        + '</div>';
+    case 'ol':
+    case 'ul': {
+      const items = Array.isArray(section.items) ? section.items : [];
+      return '<div class="field"><label>List items (one per line)</label>'
+        + '<textarea data-gc-field="items" data-gc-idx="' + idx + '" rows="' + Math.max(4, items.length + 1) + '">' + gcEscape(items.join('\n')) + '</textarea>'
+        + '<p class="gc-section-card__help">Each line becomes one ' + (section.type === 'ol' ? 'numbered' : 'bulleted') + ' item. <code>**bold**</code> + <code>*italic*</code> work inside items.</p>'
+        + '</div>';
+    }
+    case 'step':
+      return '<div class="field"><label>Step title</label>'
+        + '<input type="text" data-gc-field="title" data-gc-idx="' + idx + '" value="' + gcEscape(section.title || '') + '">'
+        + '</div>'
+        + '<div class="field"><label>Step body</label>'
+        + '<textarea data-gc-field="body" data-gc-idx="' + idx + '" rows="3">' + gcEscape(section.body || '') + '</textarea>'
+        + '<p class="gc-section-card__help">Step number is auto-assigned in order. Add multiple step cards in a row to build a numbered process.</p>'
+        + '</div>';
+    default:
+      return '<p class="gc-section-card__help">Unknown section type.</p>';
+  }
+}
+
+function gcRender() {
+  if (!gcState[gcWhich]) return;
+  const data = gcState[gcWhich].data;
+
+  // Cover fields
+  gcTitleEl.value      = data.title || '';
+  gcEyebrowEl.value    = data.eyebrow || '';
+  gcCoverLedeEl.value  = data.coverLede || '';
+  gcClosingTitleEl.value = data.closingTitle || '';
+  gcClosingBodyEl.value  = data.closingBody || '';
+
+  // Sections
+  const sections = Array.isArray(data.sections) ? data.sections : [];
+  if (!sections.length) {
+    gcSectionsEl.innerHTML = '<div class="gc-empty">No body sections yet. Use the "Add" picker above to insert one.</div>';
+  } else {
+    gcSectionsEl.innerHTML = sections.map((sec, idx) => {
+      const typeOptions = Object.keys(GC_TYPE_LABELS).map(t => {
+        const selected = (t === sec.type) ? ' selected' : '';
+        return '<option value="' + t + '"' + selected + '>' + GC_TYPE_LABELS[t] + '</option>';
+      }).join('');
+      return '<div class="gc-section-card" data-gc-idx="' + idx + '">'
+        +   '<div class="gc-section-card__header">'
+        +     '<div class="gc-section-card__type">'
+        +       '<label>Type</label>'
+        +       '<select data-gc-typeselect data-gc-idx="' + idx + '">' + typeOptions + '</select>'
+        +     '</div>'
+        +     '<div class="gc-section-card__ctrls">'
+        +       '<button type="button" class="gc-icon-btn" data-gc-action="up" data-gc-idx="' + idx + '" title="Move up" ' + (idx === 0 ? 'disabled' : '') + '>↑</button>'
+        +       '<button type="button" class="gc-icon-btn" data-gc-action="down" data-gc-idx="' + idx + '" title="Move down" ' + (idx === sections.length - 1 ? 'disabled' : '') + '>↓</button>'
+        +       '<button type="button" class="gc-icon-btn gc-icon-btn--danger" data-gc-action="delete" data-gc-idx="' + idx + '" title="Delete">✕</button>'
+        +     '</div>'
+        +   '</div>'
+        +   '<div class="gc-section-card__body">' + gcSectionFieldsHtml(sec, idx) + '</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  // Preview link
+  gcPreviewLinkEl.setAttribute('href', GC_PREVIEW_URLS[gcWhich]);
+
+  // Customized note
+  gcCustomizedEl.style.display = gcState[gcWhich].customized ? 'block' : 'none';
+
+  gcBindSectionInputs();
+}
+
+function gcBindSectionInputs() {
+  // Per-field bindings (text, textarea inputs inside section cards)
+  gcSectionsEl.querySelectorAll('[data-gc-field]').forEach(input => {
+    input.addEventListener('input', () => {
+      const idx = parseInt(input.getAttribute('data-gc-idx'), 10);
+      const field = input.getAttribute('data-gc-field');
+      const section = gcState[gcWhich].data.sections[idx];
+      if (!section) return;
+      if (field === 'items') {
+        section.items = (input.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+      } else {
+        section[field] = input.value;
+      }
+      gcMarkDirty();
+    });
+  });
+
+  // Type selector — changes the section type and reshapes fields
+  gcSectionsEl.querySelectorAll('[data-gc-typeselect]').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const idx = parseInt(sel.getAttribute('data-gc-idx'), 10);
+      const newType = sel.value;
+      const sections = gcState[gcWhich].data.sections;
+      if (!sections[idx]) return;
+      sections[idx] = gcDefaultSection(newType);
+      gcMarkDirty();
+      gcRender();
+    });
+  });
+
+  // Up / Down / Delete buttons
+  gcSectionsEl.querySelectorAll('[data-gc-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-gc-idx'), 10);
+      const action = btn.getAttribute('data-gc-action');
+      const sections = gcState[gcWhich].data.sections;
+      if (action === 'up' && idx > 0) {
+        [sections[idx - 1], sections[idx]] = [sections[idx], sections[idx - 1]];
+      } else if (action === 'down' && idx < sections.length - 1) {
+        [sections[idx + 1], sections[idx]] = [sections[idx], sections[idx + 1]];
+      } else if (action === 'delete') {
+        if (!confirm('Delete this section? This is undone only by clicking Discard Changes (before saving).')) return;
+        sections.splice(idx, 1);
+      } else {
+        return;
+      }
+      gcMarkDirty();
+      gcRender();
+    });
+  });
+}
+
+function gcDefaultSection(type) {
+  switch (type) {
+    case 'h2':    return { type: 'h2', text: '' };
+    case 'h3':    return { type: 'h3', text: '' };
+    case 'p':     return { type: 'p',  text: '' };
+    case 'quote': return { type: 'quote', text: '' };
+    case 'ol':    return { type: 'ol', items: [] };
+    case 'ul':    return { type: 'ul', items: [] };
+    case 'step':  return { type: 'step', title: '', body: '' };
+    default:      return { type: 'p',  text: '' };
+  }
+}
+
+// Top-level field bindings (cover + closing)
+[gcTitleEl, gcEyebrowEl, gcCoverLedeEl, gcClosingTitleEl, gcClosingBodyEl].forEach(el => {
+  el.addEventListener('input', () => {
+    const data = gcState[gcWhich].data;
+    data.title = gcTitleEl.value;
+    data.eyebrow = gcEyebrowEl.value;
+    data.coverLede = gcCoverLedeEl.value;
+    data.closingTitle = gcClosingTitleEl.value;
+    data.closingBody = gcClosingBodyEl.value;
+    gcMarkDirty();
+  });
+});
+
+// Sub-tab switching
+document.querySelectorAll('[data-gc-which]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const next = tab.getAttribute('data-gc-which');
+    if (next === gcWhich) return;
+    if (gcDirty && !confirm('Discard unsaved changes to the ' + (gcWhich === 'buyer' ? 'buyer' : 'seller') + "'s guide?")) return;
+    gcDirty = false;
+    document.querySelectorAll('[data-gc-which]').forEach(t => t.classList.toggle('is-active', t === tab));
+    gcWhich = next;
+    gcRender();
+  });
+});
+
+// Add section
+gcAddBtnEl.addEventListener('click', () => {
+  const type = gcAddTypeEl.value;
+  gcState[gcWhich].data.sections.push(gcDefaultSection(type));
+  gcMarkDirty();
+  gcRender();
+  // Scroll the new section into view
+  setTimeout(() => {
+    const cards = gcSectionsEl.querySelectorAll('.gc-section-card');
+    const last = cards[cards.length - 1];
+    if (last) {
+      last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const firstInput = last.querySelector('input,textarea');
+      if (firstInput) firstInput.focus();
+    }
+  }, 80);
+});
+
+// Save
+gcSaveBtnEl.addEventListener('click', async () => {
+  const data = gcState[gcWhich].data;
+  const payload = {
+    title: (data.title || '').trim(),
+    eyebrow: (data.eyebrow || '').trim(),
+    coverLede: (data.coverLede || '').trim(),
+    sections: data.sections,
+    closingTitle: (data.closingTitle || '').trim(),
+    closingBody: (data.closingBody || '').trim(),
+    updatedAt: serverTimestamp(),
+    updatedBy: (auth.currentUser && auth.currentUser.uid) || null
+  };
+  gcSaveBtnEl.disabled = true;
+  gcSaveBtnEl.textContent = 'Saving…';
+  try {
+    await setDoc(doc(db, 'guides', gcWhich), payload, { merge: false });
+    gcState[gcWhich].customized = true;
+    gcDirty = false;
+    gcCustomizedEl.style.display = 'block';
+    toast('Guide saved');
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+  } finally {
+    gcSaveBtnEl.disabled = false;
+    gcSaveBtnEl.textContent = 'Save';
+  }
+});
+
+// Discard (re-load from Firestore or defaults)
+gcCancelBtnEl.addEventListener('click', async () => {
+  if (gcDirty && !confirm('Discard your changes to this guide?')) return;
+  await gcLoadOne(gcWhich);
+  gcDirty = false;
+  gcRender();
+});
+
+// Reset to default
+gcResetBtnEl.addEventListener('click', async () => {
+  if (!confirm('Reset this guide to the default? Your customizations will be deleted from Firestore.')) return;
+  try {
+    await deleteDoc(doc(db, 'guides', gcWhich));
+    gcState[gcWhich] = { customized: false, data: gcCloneDefault(gcWhich) };
+    gcDirty = false;
+    gcRender();
+    toast('Reset to default');
+  } catch (err) {
+    toast('Reset failed: ' + (err.message || err), { error: true });
+  }
+});
+
+// Lazy-init the editor when the Guides tab is first opened
+document.querySelectorAll('.cms-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.getAttribute('data-tab') === 'guides' && !gcInitialized) initGuides();
+  });
+});
+
+// Wire into existing dirty-tracking so beforeunload prompts cover the guides tab too
+window.addEventListener('beforeunload', (e) => {
+  if (gcDirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+</script>
+
+</body>
+</html>

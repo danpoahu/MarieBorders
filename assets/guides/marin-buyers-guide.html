@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<!--
+  STAGE — Marin Buyer's Guide. Brand styling is locked here; the EDITABLE
+  body content comes from Firestore `guides/buyer` (or falls back to
+  MB.guideDefaults.buyer if Firestore is empty/down).
+  TODO before cutover: remove <meta name="robots" content="noindex">.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Marin Buyer's Guide | Marie Borders</title>
+<meta name="description" content="A first-time and move-up buyer's guide to Marin County real estate, from Marie Borders.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #faf8f4;
+    --ink: #1a1f24;
+    --ink-soft: #4a5057;
+    --ink-muted: #7a7e84;
+    --accent: #a8854c;
+    --accent-deep: #8a6a36;
+    --hush: #e8e2d4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--ink-soft);
+    background: var(--paper);
+    line-height: 1.65;
+    font-size: 16px;
+  }
+  .page { max-width: 760px; margin: 0 auto; padding: 4rem 2rem; }
+  .cover {
+    text-align: center;
+    padding-bottom: 3rem;
+    margin-bottom: 3rem;
+    border-bottom: 1px solid var(--hush);
+  }
+  .eyebrow {
+    font-size: 0.78rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(2.4rem, 5vw, 3.4rem);
+    color: var(--ink);
+    line-height: 1.15;
+    margin-bottom: 1rem;
+  }
+  .cover__lede {
+    font-size: 1.1rem;
+    max-width: 540px;
+    margin: 0 auto;
+    color: var(--ink-soft);
+  }
+  h2 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 400;
+    font-size: 1.8rem;
+    color: var(--ink);
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+  }
+  h3 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent-deep);
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+  p { margin-bottom: 1rem; }
+  ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+  li { margin-bottom: 0.5rem; }
+  blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 0.5rem 1.5rem;
+    margin: 1.5rem 0;
+    color: var(--ink-soft);
+    font-style: italic;
+    background: rgba(168, 133, 76, 0.06);
+  }
+  .step-card {
+    background: #fff;
+    border: 1px solid var(--hush);
+    border-radius: 4px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .step-card__num {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 32px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.1rem;
+    margin-right: 0.5rem;
+  }
+  .step-card h3 {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 400;
+    font-size: 1.25rem;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink);
+    margin-top: 0;
+  }
+  .closing-card {
+    background: var(--ink);
+    color: #fff;
+    border-radius: 4px;
+    padding: 2.5rem 2rem;
+    margin-top: 3rem;
+    text-align: center;
+  }
+  .closing-card h2 { color: #fff; margin-top: 0; }
+  .closing-card a { color: var(--accent); }
+  .print-tip {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem;
+    border: 1px dashed var(--hush);
+    border-radius: 4px;
+  }
+  @media print {
+    .print-tip { display: none; }
+    body { background: #fff; }
+    .page { padding: 0; max-width: 100%; }
+    h2 { page-break-after: avoid; }
+    .step-card, .closing-card { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="cover">
+    <div class="eyebrow" id="guide-eyebrow"></div>
+    <h1 id="guide-title"></h1>
+    <p class="cover__lede" id="guide-lede"></p>
+  </header>
+
+  <div id="guide-body"></div>
+
+  <div class="closing-card">
+    <h2 id="guide-closing-title"></h2>
+    <p id="guide-closing-body"></p>
+    <p style="margin-top:1.5rem;">
+      <a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a><br>
+      <a href="tel:+14156011715">(415) 601-1715</a><br>
+      <span style="opacity:0.7;">Marie Borders &middot; DRE #01256719 &middot; Marin's Finest</span>
+    </p>
+  </div>
+
+  <div class="print-tip">
+    Want a PDF copy? Press <strong>Cmd+P</strong> (Mac) or <strong>Ctrl+P</strong> (Windows) and choose "Save as PDF."
+  </div>
+
+</div>
+
+<script type="module" src="../js/firebase-init.js"></script>
+<script src="../js/guide-defaults.js"></script>
+<script src="../js/guide-renderer.js"></script>
+<script>
+  MB.guideRenderer.load('buyer');
+</script>
+</body>
+</html>

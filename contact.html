@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<!--
+  STAGE — Phase 1 work-in-progress site.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get in Touch | Marie Borders Marin County Real Estate</title>
+<meta name="description" content="Contact Marie Borders — Marin County real estate. Ask about a listing, discuss selling your home, or start a buying conversation. Confidential and prompt.">
+<meta property="og:title" content="Get in Touch | Marie Borders">
+<meta property="og:description" content="Contact Marie Borders for Marin County real estate inquiries.">
+<meta property="og:image" content="assets/images/hero.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://marieborders.com/contact.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css?v=2.4">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="brand" href="index.html">Marie Borders</a>
+    <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="primary-nav">
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <nav class="nav" id="primary-nav" aria-label="Primary">
+      <a class="nav__link" href="index.html">Home</a>
+      <a class="nav__link" href="about.html">About</a>
+      <a class="nav__link" href="for-sale.html">For Sale</a>
+      <a class="nav__link" href="wish-list.html">Wish List</a>
+      <a class="nav__link" href="home-value.html">Home Value</a>
+      <a class="nav__link" href="guides.html">Guides</a>
+      <a class="nav__link" href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero hero--small">
+    <div class="hero__inner">
+      <h1>Get in Touch</h1>
+      <p class="hero__tagline">A conversation is always welcome.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="contact-grid">
+
+        <aside class="info-card" aria-label="Contact information">
+          <h2>Reach Marie</h2>
+          <dl>
+            <div>
+              <dt>Email</dt>
+              <dd><a data-content="displayEmail" href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a></dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd><a data-content="phone" href="tel:+14156011715">(415) 601-1715</a></dd>
+            </div>
+            <div>
+              <dt>Brokerage</dt>
+              <dd><a data-content="brokerage" href="https://marinsfinest.com" target="_blank" rel="noopener">Marin’s Finest</a></dd>
+            </div>
+            <div>
+              <dt>License</dt>
+              <dd data-content="license">DRE #01256719</dd>
+            </div>
+          </dl>
+        </aside>
+
+        <div>
+          <div id="listing-context" class="context-banner" style="display:none;" role="note"></div>
+
+          <div id="contact-success" class="form__success" tabindex="-1" style="display:none;" role="status">
+            <h2 style="margin-bottom:0.5rem;">Thank You</h2>
+            <p>Your message has been received. Marie will be in touch shortly.</p>
+          </div>
+
+          <form id="contact-form" class="form" novalidate>
+            <div class="field--row">
+              <div class="field">
+                <label for="name">Name <span class="req" aria-hidden="true">*</span></label>
+                <input type="text" id="name" name="name" autocomplete="name" required aria-required="true">
+              </div>
+              <div class="field">
+                <label for="email">Email <span class="req" aria-hidden="true">*</span></label>
+                <input type="email" id="email" name="email" autocomplete="email" required aria-required="true">
+              </div>
+            </div>
+
+            <div class="field--row">
+              <div class="field">
+                <label for="phone">Phone <span style="color:var(--ink-muted);text-transform:none;letter-spacing:0;font-size:0.78rem;">(optional)</span></label>
+                <input type="tel" id="phone" name="phone" autocomplete="tel">
+              </div>
+              <div class="field">
+                <label for="subject">Subject</label>
+                <select id="subject" name="subject">
+                  <option>General inquiry</option>
+                  <option>About a listing</option>
+                  <option>Selling my home</option>
+                  <option>Buying a home</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="message">Message <span class="req" aria-hidden="true">*</span></label>
+              <textarea id="message" name="message" required aria-required="true" placeholder="Tell Marie a little about what you’re looking for, or ask any question."></textarea>
+            </div>
+
+            <input type="hidden" id="listingId" name="listingId" value="">
+            <input type="hidden" id="listingAddress" name="listingAddress" value="">
+
+            <div id="contact-error" class="form__error" role="alert" style="display:none;"></div>
+
+            <div>
+              <button type="submit" class="btn">Send Message</button>
+            </div>
+
+            <p class="form__note">Your information is confidential and used only to respond to your inquiry.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__cols">
+      <div>
+        <h4>Contact</h4>
+        <p><a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a></p>
+        <p><a href="tel:+14156011715">(415) 601-1715</a></p>
+        <p>DRE #01256719</p>
+      </div>
+      <div>
+        <h4>About</h4>
+        <p>Marie Borders is a Marin County native and licensed real estate agent representing buyers and sellers across the North Bay.</p>
+      </div>
+      <div>
+        <h4>Brokerage</h4>
+        <p><a href="https://marinsfinest.com" target="_blank" rel="noopener">Marin’s Finest</a></p>
+        <p>Real Estate Associate | Team Leader</p>
+      </div>
+    </div>
+    <div class="site-footer__strip">
+      <span>&copy; <span data-year>2026</span> Marie Borders. Real Estate Associate, DRE #01256719. All rights reserved.</span>
+      <span class="eho">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+        Equal Housing Opportunity
+      </span>
+      <span>Site by <a href="https://oahuappdesign.com" target="_blank" rel="noopener">DP Consulting</a></span>
+      <span>Hero photo by <a href="https://unsplash.com/@jaredlisack" target="_blank" rel="noopener">Jared Lisack</a> on <a href="https://unsplash.com/" target="_blank" rel="noopener">Unsplash</a></span>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="assets/js/firebase-init.js"></script>
+<script src="assets/js/site.js?v=2.4"></script>
+<script src="assets/js/site-content.js"></script>
+<script src="assets/js/contact.js"></script>
+<script>
+  (function () {
+    MB.content && MB.content.applyContact && MB.content.applyContact();
+  })();
+</script>
+
+<script src="assets/js/accessibility.js"></script>
+</body>
+</html>

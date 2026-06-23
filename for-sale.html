@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<!--
+  STAGE — Phase 1 work-in-progress site.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Currently for Sale | Marie Borders Marin County Real Estate</title>
+<meta name="description" content="Browse Marin County properties currently represented by Marie Borders — active listings, properties in escrow, and recently sold homes.">
+<meta property="og:title" content="Currently for Sale | Marie Borders">
+<meta property="og:description" content="Active and pending Marin County listings represented by Marie Borders.">
+<meta property="og:image" content="assets/images/hero.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://marieborders.com/for-sale.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css?v=2.4">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="brand" href="index.html">Marie Borders</a>
+    <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="primary-nav">
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <nav class="nav" id="primary-nav" aria-label="Primary">
+      <a class="nav__link" href="index.html">Home</a>
+      <a class="nav__link" href="about.html">About</a>
+      <a class="nav__link" href="for-sale.html">For Sale</a>
+      <a class="nav__link" href="wish-list.html">Wish List</a>
+      <a class="nav__link" href="home-value.html">Home Value</a>
+      <a class="nav__link" href="guides.html">Guides</a>
+      <a class="nav__link" href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero hero--small">
+    <div class="hero__inner">
+      <h1>Currently for Sale</h1>
+      <p class="hero__tagline">Homes represented by Marie Borders</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+
+      <div class="filters" role="tablist" aria-label="Filter listings by status">
+        <button class="chip is-active" type="button" role="tab" aria-selected="true" data-filter="active">Active</button>
+        <button class="chip" type="button" role="tab" aria-selected="false" data-filter="pending">Pending</button>
+        <button class="chip" type="button" role="tab" aria-selected="false" data-filter="sold">Sold</button>
+        <button class="chip" type="button" role="tab" aria-selected="false" data-filter="all">All</button>
+      </div>
+
+      <div id="listings-grid" class="listings-grid" aria-live="polite"></div>
+
+    </div>
+  </section>
+
+  <section class="band-contact">
+    <div class="wrap wrap--narrow">
+      <h2>Looking for Something Specific?</h2>
+      <p>Many of Marie’s clients find their home before it’s ever listed publicly. If you have a neighborhood, school district, or property style in mind, let’s talk.</p>
+      <a class="btn" href="contact.html">Get in Touch</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__cols">
+      <div>
+        <h4>Contact</h4>
+        <p><a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a></p>
+        <p><a href="tel:+14156011715">(415) 601-1715</a></p>
+        <p>DRE #01256719</p>
+      </div>
+      <div>
+        <h4>About</h4>
+        <p>Marie Borders is a Marin County native and licensed real estate agent representing buyers and sellers across the North Bay.</p>
+      </div>
+      <div>
+        <h4>Brokerage</h4>
+        <p><a href="https://marinsfinest.com" target="_blank" rel="noopener">Marin’s Finest</a></p>
+        <p>Real Estate Associate | Team Leader</p>
+      </div>
+    </div>
+    <div class="site-footer__strip">
+      <span>&copy; <span data-year>2026</span> Marie Borders. Real Estate Associate, DRE #01256719. All rights reserved.</span>
+      <span class="eho">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+        Equal Housing Opportunity
+      </span>
+      <span>Site by <a href="https://oahuappdesign.com" target="_blank" rel="noopener">DP Consulting</a></span>
+      <span>Hero photo by <a href="https://unsplash.com/@jaredlisack" target="_blank" rel="noopener">Jared Lisack</a> on <a href="https://unsplash.com/" target="_blank" rel="noopener">Unsplash</a></span>
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="assets/js/firebase-init.js"></script>
+<script src="assets/js/site.js?v=2.4"></script>
+<script src="assets/js/listings.js"></script>
+<script>
+  (function () {
+    var grid = document.getElementById('listings-grid');
+    var chips = document.querySelectorAll('.chip[data-filter]');
+    if (!grid) return;
+
+    var currentFilter = 'active';
+    var allItems = [];
+    var userPickedFilter = false; // becomes true after the first user click on a chip
+    var didAutoFallback = false;
+
+    function setActiveChip(filter) {
+      chips.forEach(function (c) {
+        var match = c.getAttribute('data-filter') === filter;
+        c.classList.toggle('is-active', match);
+        c.setAttribute('aria-selected', match ? 'true' : 'false');
+      });
+    }
+
+    function emptyMessage(filter) {
+      var label = filter === 'active' ? 'active listings'
+                : filter === 'pending' ? 'pending listings'
+                : filter === 'sold' ? 'recently sold properties'
+                : 'listings';
+      return '<div class="empty-state">'
+           +   '<p>No ' + label + ' at the moment.</p>'
+           +   '<p style="font-family:var(--font-sans);font-size:1rem;">Please check back soon or reach out — many of Marie’s clients find their home before it’s listed publicly.</p>'
+           +   '<a class="btn" href="contact.html">Get in Touch</a>'
+           + '</div>';
+    }
+
+    function fallbackNoticeHtml() {
+      return '<div class="empty-state" style="background:transparent;padding:0 0 var(--s5);text-align:left;">'
+           +   '<p style="font-family:var(--font-sans);font-size:0.95rem;color:var(--ink-soft);margin:0;">'
+           +     'No homes currently for sale &mdash; here are recent listings Marie has represented.'
+           +   '</p>'
+           + '</div>';
+    }
+
+    function render() {
+      // Auto-fallback: on first render, if the default Active filter is empty
+      // but other listings exist, switch to All so the page isn't blank.
+      if (!userPickedFilter && currentFilter === 'active' && allItems.length) {
+        var activeCount = allItems.filter(function (l) { return l.status === 'active'; }).length;
+        if (activeCount === 0) {
+          currentFilter = 'all';
+          didAutoFallback = true;
+          setActiveChip('all');
+        }
+      }
+
+      var items;
+      if (!currentFilter || currentFilter === 'all') {
+        items = allItems.slice();
+      } else {
+        items = allItems.filter(function (l) { return l.status === currentFilter; });
+      }
+
+      if (!items.length) {
+        grid.innerHTML = emptyMessage(currentFilter);
+        return;
+      }
+
+      var prefix = (didAutoFallback && currentFilter === 'all') ? fallbackNoticeHtml() : '';
+      grid.innerHTML = prefix + items.map(MB.renderListingCard).join('');
+    }
+
+    chips.forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        userPickedFilter = true;
+        didAutoFallback = false;
+        setActiveChip(chip.getAttribute('data-filter'));
+        currentFilter = chip.getAttribute('data-filter');
+        render();
+      });
+    });
+
+    // Live subscription — re-renders on every Firestore snapshot, so a
+    // new listing added in the CMS appears here without a refresh.
+    MB.listings.subscribeAll(function (items) {
+      allItems = items;
+      render();
+    });
+  })();
+</script>
+
+<script src="assets/js/accessibility.js"></script>
+</body>
+</html>

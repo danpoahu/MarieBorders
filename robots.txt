@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /STAGE/
+Disallow: /cms.html
+
+Sitemap: https://marieborders.com/sitemap.xml
