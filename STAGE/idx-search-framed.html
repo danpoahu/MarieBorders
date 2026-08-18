@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/site.css?v=2.6">
+<link rel="stylesheet" href="assets/css/site.css?v=2.7">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -75,15 +75,91 @@
           referrerpolicy="no-referrer-when-downgrade"
           hidden></iframe>
 
-        <!-- Shown until a real IDX link is configured below. -->
-        <div class="idx-frame-empty" id="idx-frame-empty">
-          <div class="idx-frame-empty__inner">
-            <h3>The MLS search panel loads here</h3>
-            <p>This box is the real size and behaviour of the framed version: a fixed-height window with its own scrollbar, sitting inside Marie’s page.</p>
-            <p class="idx-frame-empty__note">Waiting on the <strong>Property Search</strong> link (the &ldquo;Without Navigation Bar&rdquo; one) from Marie’s BAREIS MLS profile: <em>Admin &rarr; IDX/Public Links</em>. Marin’s Finest must enable IDX access for her first. Once the link is added, this box fills with the MLS’s own search — its fonts, colours and buttons, not ours.</p>
+        <!-- ------------------------------------------------------------------
+             VISUAL REPRESENTATION of the Rapattoni IDX panel.
+
+             Replaced by the real <iframe> the moment FRAME_URL is set below.
+             This is NOT invented from nothing: the colours, typography, chip
+             layout, action bar and full-width row format were measured from the
+             LIVE Rapattoni IDX panel running at Central Jersey MLS
+             (cjmls.rapmls.com) — the same Rapattoni IDX product BAREIS runs.
+             Only the listing content is substituted for Marin equivalents so
+             the like-for-like comparison is fair.
+             ------------------------------------------------------------------ -->
+        <div class="idx-frame-empty" id="idx-frame-empty" style="padding:0;background:#fff;display:block;">
+          <div class="rapx__stamp">Representation &mdash; not live</div>
+          <div class="rapx">
+
+            <div class="rapx__agent">
+              <div class="rapx__avatar"></div>
+              <div>
+                <div class="rapx__agent-name">MARIE BORDERS</div>
+                <div class="rapx__agent-meta">(415) 601-1715 &nbsp;&bull;&nbsp; marie@marinsfinest.com</div>
+              </div>
+            </div>
+
+            <div class="rapx__bar"><span class="rapx__btn">&#128438; Print This Page</span></div>
+
+            <div class="rapx__body">
+              <div class="rapx__title">Marin County &lt; $3M</div>
+              <div class="rapx__sort">Sort &#9662;</div>
+              <div class="rapx__tabline"><span class="rapx__tab">Residential (37)</span></div>
+
+            <div class="rapx__row">
+              <div class="rapx__photo">MLS PHOTO
+                <div class="rapx__photo-strip"><span>$2,495,000</span><span>4 BD &nbsp; 4 (3 1) BA</span></div>
+              </div>
+              <div class="rapx__detail">
+                <div class="rapx__addr">14 Heronwood Lane, Mill Valley, CA 94941</div>
+                <div class="rapx__price">$2,495,000</div>
+                <div class="rapx__meta">Listing #324118422R &nbsp;|&nbsp; Status: <a href="#" onclick="return false;">Active 08/07/26</a></div>
+                <div class="rapx__chips"><div class="rapx__chip"><b>4</b><span>BD</span></div><div class="rapx__chip"><b>4 (3 1)</b><span>BA</span></div><div class="rapx__chip"><b>0.24</b><span>LOT SZ</span></div><div class="rapx__chip"><b>2,840</b><span>SQ FT</span></div><div class="rapx__chip"><b>1948</b><span>YR</span></div><div class="rapx__chip"><b>Single Family</b><span>TYPE</span></div></div>
+                <div class="rapx__remarks-h">Remarks</div>
+                <div class="rapx__remarks">Shingled mid-century set back behind a stand of redwoods, remodeled with restraint. Walls of glass in the main room open to a level lawn. Kitchen opens to a covered terrace. Two bedrooms down, primary suite up with a reading alcove under the eaves.</div>
+                <div class="rapx__actions">
+                  <span class="rapx__link">&#128269; View Details</span>
+                  <span class="rapx__link">&#9679; See Map</span>
+                  <span class="rapx__link">&#9432; Request More Information</span>
+                  <span class="rapx__link">&#8599; Share</span>
+                  <span class="rapx__link">&#9654; Virtual Media</span>
+                </div>
+              </div>
+            </div>
+            <div class="rapx__courtesy">Listing courtesy of:<br><b>RIDGELINE PROPERTIES <span style="font-size:11px;color:#888;">/ RDGP</span></b></div>
+
+            <div class="rapx__row">
+              <div class="rapx__photo">MLS PHOTO
+                <div class="rapx__photo-strip"><span>$1,795,000</span><span>3 BD &nbsp; 2 (2 0) BA</span></div>
+              </div>
+              <div class="rapx__detail">
+                <div class="rapx__addr">208 Cypress Bend, Novato, CA 94947</div>
+                <div class="rapx__price">$1,795,000</div>
+                <div class="rapx__meta">Listing #324119077R &nbsp;|&nbsp; Status: <a href="#" onclick="return false;">Active 08/14/26</a></div>
+                <div class="rapx__chips"><div class="rapx__chip"><b>3</b><span>BD</span></div><div class="rapx__chip"><b>2 (2 0)</b><span>BA</span></div><div class="rapx__chip"><b>0.31</b><span>LOT SZ</span></div><div class="rapx__chip"><b>1,960</b><span>SQ FT</span></div><div class="rapx__chip"><b>1979</b><span>YR</span></div><div class="rapx__chip"><b>Single Family</b><span>TYPE</span></div></div>
+                <div class="rapx__remarks-h">Remarks</div>
+                <div class="rapx__remarks">Single-level living on a quiet cul-de-sac, with a pool that gets sun from late morning through the afternoon. Open plan through the kitchen and family room, separate front room for guests, flat rear yard with mature olive trees.</div>
+                <div class="rapx__actions">
+                  <span class="rapx__link">&#128269; View Details</span>
+                  <span class="rapx__link">&#9679; See Map</span>
+                  <span class="rapx__link">&#9432; Request More Information</span>
+                  <span class="rapx__link">&#8599; Share</span>
+                  <span class="rapx__link">&#9654; Virtual Media</span>
+                </div>
+              </div>
+            </div>
+            <div class="rapx__courtesy">Listing courtesy of:<br><b>BAYFRONT REALTY GROUP <span style="font-size:11px;color:#888;">/ BFRG</span></b></div>
+            </div>
           </div>
         </div>
       </div>
+
+      <p class="idx-frame-caption">
+        <strong>About this panel:</strong> Marie&rsquo;s own IDX link hasn&rsquo;t been issued yet, so the box above is a
+        representation, not a live feed. Its colours, type, chip layout and row format were taken from the
+        <em>live</em> Rapattoni IDX panel running at another MLS on the same system BAREIS uses &mdash; so the blue
+        headings, grey chips, dark bar and plain sans-serif are the real product&rsquo;s, not a guess. Marie&rsquo;s
+        agent details and listings would differ; the styling would not, because it isn&rsquo;t ours to change.
+      </p>
 
       <p class="idx-disclaimer" id="idx-disclaimer"></p>
 
@@ -131,7 +207,7 @@
   </div>
 </footer>
 
-<script src="assets/js/site.js?v=2.6"></script>
+<script src="assets/js/site.js?v=2.7"></script>
 <script src="assets/js/idx.js?v=3"></script>
 <script>
   (function () {
@@ -175,9 +251,20 @@
 
     if (!FRAME_URL) return;              // leave the honest empty state in place
 
+    // Replace the panel's contents with a plain message. The representation
+    // markup has no fixed h3/note nodes to write into, so build one.
+    function replacePanel(title, message) {
+      if (!empty) return;
+      empty.setAttribute('style', 'padding:var(--s6);background:var(--paper);display:flex;');
+      empty.innerHTML = '<div class="idx-frame-empty__inner">'
+        + '<h3>' + title + '</h3>'
+        + '<p class="idx-frame-empty__note">' + message + '</p></div>';
+      empty.hidden = false;
+    }
+
     if (FRAME_URL.indexOf('https://') !== 0) {
-      empty.querySelector('.idx-frame-empty__note').textContent =
-        'That IDX link is not https:// — a browser will refuse to load it inside this page. Ask the MLS for the secure version of the link.';
+      replacePanel('That IDX link is not secure',
+        'The link must start with https:// — a browser will refuse to load an http:// page inside this one. Ask BAREIS for the secure version.');
       return;
     }
 
@@ -194,10 +281,8 @@
     setTimeout(function () {
       if (settled) return;
       frame.hidden = true;
-      empty.hidden = false;
-      empty.querySelector('h3').textContent = 'The MLS refused to load here';
-      empty.querySelector('.idx-frame-empty__note').textContent =
-        'This usually means the MLS blocks framing from domains it has not allow-listed. BAREIS would need to add marieborders.com before this version can work at all.';
+      replacePanel('The MLS panel did not load',
+        'Checked 2026-08-18: rebareis.rapmls.com sends no X-Frame-Options and no CSP frame-ancestors, so framing is permitted. If nothing appears, suspect the link itself (expired or mistyped ARGUMENT token) rather than a framing block.');
     }, 6000);
   })();
 </script>

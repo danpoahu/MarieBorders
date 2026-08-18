@@ -1203,6 +1203,82 @@ p { margin-bottom: var(--s4); }
   color: var(--ink-muted);
 }
 
+/* ---------- Rapattoni IDX panel — visual representation ----------
+   Reproduces the look of the real Rapattoni IDX panel so the framed option can
+   be judged before Marie's own link arrives. Measured from the LIVE product at
+   Central Jersey MLS (cjmls.rapmls.com), which runs the same Rapattoni IDX that
+   BAREIS runs. Colours, type, chip layout and the full-width row format are
+   taken from that page; only the listing content is invented.
+
+   Everything here is scoped .rapx- and deliberately uses a system sans, NOT the
+   site's Cormorant/Cinzel — the clash IS the thing being demonstrated. */
+
+.rapx { background: #fff; height: 100%; overflow-y: auto; font-family: Arial, Helvetica, sans-serif; color: #333; }
+.rapx * { box-sizing: border-box; }
+
+.rapx__agent {
+  background: #eaeaea;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 10px 16px; border-bottom: 1px solid #d8d8d8;
+}
+.rapx__avatar { width: 34px; height: 34px; border-radius: 50%; background: #c4c4c4; flex: 0 0 34px; }
+.rapx__agent-name { font-size: 15px; letter-spacing: 0.08em; color: #444; }
+.rapx__agent-meta { font-size: 11px; letter-spacing: 0.05em; color: #666; }
+
+.rapx__bar { background: #3c3c3c; padding: 9px 16px; text-align: center; }
+.rapx__btn {
+  background: #2b7cb9; color: #fff; font-size: 11px; padding: 5px 12px;
+  border-radius: 3px; display: inline-block;
+}
+
+.rapx__body { padding: 16px 18px 28px; }
+.rapx__title { font-size: 21px; color: #222; font-weight: normal; margin-bottom: 4px; }
+.rapx__sort { font-size: 12px; color: #2b7cb9; margin-bottom: 14px; }
+.rapx__tab {
+  display: inline-block; font-size: 12px; color: #444;
+  border: 1px solid #ccc; border-bottom-color: #fff;
+  padding: 6px 12px; border-radius: 3px 3px 0 0; background: #fff; position: relative; top: 1px;
+}
+.rapx__tabline { border-bottom: 1px solid #ccc; margin-bottom: 16px; }
+
+.rapx__row { display: flex; gap: 16px; padding: 14px 0; align-items: flex-start; }
+.rapx__photo {
+  flex: 0 0 210px; height: 150px; background: #d6d6d6; position: relative;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; letter-spacing: 0.12em; color: #8a8a8a;
+}
+.rapx__photo-strip {
+  position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.55);
+  color: #fff; font-size: 11px; padding: 4px 6px; display: flex; justify-content: space-between;
+}
+.rapx__detail { flex: 1; min-width: 0; }
+.rapx__addr { font-size: 14px; color: #333; margin-bottom: 2px; }
+.rapx__price { font-size: 19px; color: #222; margin-bottom: 4px; }
+.rapx__meta { font-size: 11.5px; color: #555; margin-bottom: 8px; }
+.rapx__meta a, .rapx__link { color: #2b7cb9; text-decoration: none; }
+.rapx__chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.rapx__chip {
+  background: #efefef; border: 1px solid #dcdcdc; border-radius: 3px;
+  padding: 5px 9px; text-align: center; min-width: 52px;
+}
+.rapx__chip b { display: block; font-size: 12px; font-weight: normal; color: #333; }
+.rapx__chip span { font-size: 9px; letter-spacing: 0.08em; color: #777; }
+.rapx__remarks-h { font-size: 12.5px; color: #333; margin-bottom: 3px; }
+.rapx__remarks { font-size: 11.5px; line-height: 1.5; color: #555; margin-bottom: 10px; }
+.rapx__actions {
+  background: #f7f7f7; border: 1px solid #e4e4e4; border-radius: 3px;
+  padding: 9px; display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; font-size: 11.5px;
+}
+.rapx__courtesy { font-size: 11px; color: #666; padding: 6px 0 0; border-top: 1px solid #eee; }
+.rapx__courtesy b { font-size: 14px; color: #333; font-weight: normal; letter-spacing: 0.04em; }
+
+.rapx__stamp {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  background: rgba(26,31,36,0.86); color: #fff;
+  font-family: var(--font-sans); font-size: 0.66rem; letter-spacing: 0.1em;
+  text-transform: uppercase; padding: 5px 10px; border-radius: 100px;
+}
+
 /* ---------- IDX version toggle (A/B comparison) ---------- */
 .idx-toggle { margin: 0 0 var(--s6); }
 .idx-toggle__label {
@@ -1296,6 +1372,17 @@ p { margin-bottom: var(--s4); }
   line-height: 1.7;
   color: var(--ink-soft);
   margin-bottom: var(--s4);
+}
+.idx-frame-caption {
+  margin-top: var(--s5);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: var(--s4) var(--s5);
 }
 .idx-frame-empty__note {
   font-size: 0.85rem !important;
