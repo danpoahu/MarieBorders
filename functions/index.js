@@ -773,10 +773,14 @@ exports.onListingVideoUploaded = onObjectFinalized(
 // Set the secret before the first deploy:
 //   firebase functions:secrets:set BRIDGE_ACCESS_TOKEN
 //
-// DATASET: 'abor_ref' is the free RESO reference feed (Austin's Unlock MLS,
-// previous year's data) used to prove the pipeline. When/if BAREIS issues a
-// real data license, change this one string to the BAREIS dataset.
-const IDX_DATASET = 'abor_ref';
+// DATASET: 'test' is the free Bridge sandbox this application is provisioned
+// for — 10,000 SYNTHETIC listings (invented cities like "Wolfbury TX") in real
+// RESO Data Dictionary fields, with real photo URLs. It proves the pipeline
+// without any chance of synthetic records being mistaken for real inventory.
+// NOTE: the Austin reference feed ('actris_ref') returns 401 for this app, and
+// 'abor_ref' does not exist. When/if BAREIS issues a real data license, change
+// this one string to the BAREIS dataset code.
+const IDX_DATASET = 'test';
 const IDX_UPSTREAM = 'https://api.bridgedataoutput.com/api/v2/OData/' + IDX_DATASET + '/Property';
 
 // Only these OData params are forwarded. Anything else the caller sends is

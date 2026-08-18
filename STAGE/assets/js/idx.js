@@ -8,7 +8,9 @@
  *   'sample' — MB.idxSampleData (idx-data.js). Fictional records in real RESO
  *              field names. Used while we wait on a Bridge access token.
  *   'live'   — a Cloud Function proxy that holds the token server-side and
- *              forwards to the RESO Property resource.
+ *              forwards to the RESO Property resource. Currently the Bridge
+ *              'test' dataset: 10,000 synthetic listings in real RESO fields.
+ *              Append ?source=live to any IDX page to use it.
  *
  * WHY A PROXY AND NOT A DIRECT BROWSER FETCH
  *   The Bridge endpoint sends permissive CORS (it reflects our Origin and
@@ -19,9 +21,9 @@
  *   for a real BAREIS feed later without touching the front end.
  *
  * SWITCHING TO LIVE DATA
- *   1. Register at https://bridgedataoutput.com/register/actris_ref
- *   2. Put the token in the Cloud Function config (never in this repo)
- *   3. Set SOURCE below to 'live'
+ *   Registration is done; the server token lives in Secret Manager as
+ *   BRIDGE_ACCESS_TOKEN (and in the Mac Keychain as "Bridge API server token").
+ *   To make live the default for everyone, set SOURCE to 'live' below.
  *   Nothing else in this file or the pages changes.
  * ---------------------------------------------------------------------------
  */
@@ -32,6 +34,12 @@
 
   var CONFIG = {
     // 'sample' | 'live'
+    //
+    // Stays 'sample' so the page Daniel shows Marie always renders the Marin
+    // preview records. Append ?source=live to any IDX page to exercise the real
+    // feed through the proxy without changing what anyone else sees. The
+    // override is read below and is deliberately one-way (you can turn live ON
+    // via the URL, never force sample off for someone who has it configured).
     SOURCE: 'sample',
 
     // Cloud Function proxy (deployed alongside the existing mbreal-83286
@@ -230,6 +238,14 @@
         return { items: items, total: total, hasMore: (skip || 0) + items.length < total };
       });
   }
+
+  // URL override: ?source=live exercises the proxy against the real feed.
+  try {
+    if (typeof window !== 'undefined' && window.location &&
+        /[?&]source=live\b/.test(window.location.search)) {
+      CONFIG.SOURCE = 'live';
+    }
+  } catch (e) { /* non-browser context (node smoke tests) */ }
 
   // ---------- Public API ----------
   MB.idx = {
