@@ -1341,6 +1341,16 @@ p { margin-bottom: var(--s4); }
 .idx-toggle__opt:hover { background: var(--paper-deep); color: var(--ink); }
 .idx-toggle__opt.is-active { background: var(--accent); color: #fff; }
 .idx-toggle__opt.is-active:hover { background: var(--accent-deep); color: #fff; }
+.idx-toggle__cost {
+  display: block;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  margin-top: 5px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(0,0,0,0.09);
+  opacity: 0.9;
+}
+.idx-toggle__opt.is-active .idx-toggle__cost { border-top-color: rgba(255,255,255,0.35); }
 .idx-toggle__opt small {
   display: block;
   font-size: 0.72rem;
