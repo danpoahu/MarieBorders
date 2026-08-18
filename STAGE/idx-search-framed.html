@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/site.css?v=2.5">
+<link rel="stylesheet" href="assets/css/site.css?v=2.6">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -52,6 +52,14 @@
   <section class="section">
     <div class="wrap">
 
+      <div class="idx-toggle">
+        <div class="idx-toggle__label">Choose how the search looks</div>
+        <div class="idx-toggle__set">
+          <a class="idx-toggle__opt" href="idx-search.html">Built into the site<small>Listings become marieborders.com pages</small></a>
+          <a class="idx-toggle__opt is-active" href="idx-search-framed.html">Free MLS panel<small>The MLS&rsquo;s own search, shown inside the page</small></a>
+        </div>
+      </div>
+
       <!-- STAGE-ONLY comparison banner. Never promoted to the live root. -->
       <div class="idx-notice">
         <span class="idx-notice__label">Version B</span>
@@ -72,7 +80,7 @@
           <div class="idx-frame-empty__inner">
             <h3>The MLS search panel loads here</h3>
             <p>This box is the real size and behaviour of the framed version: a fixed-height window with its own scrollbar, sitting inside Marie’s page.</p>
-            <p class="idx-frame-empty__note">Waiting on the frameable IDX link from Marie’s Rapattoni MLS profile. Once that link is added, this box fills with the MLS’s own search — its fonts, colours and buttons, not ours.</p>
+            <p class="idx-frame-empty__note">Waiting on the <strong>Property Search</strong> link (the &ldquo;Without Navigation Bar&rdquo; one) from Marie’s BAREIS MLS profile: <em>Admin &rarr; IDX/Public Links</em>. Marin’s Finest must enable IDX access for her first. Once the link is added, this box fills with the MLS’s own search — its fonts, colours and buttons, not ours.</p>
           </div>
         </div>
       </div>
@@ -123,7 +131,7 @@
   </div>
 </footer>
 
-<script src="assets/js/site.js?v=2.5"></script>
+<script src="assets/js/site.js?v=2.6"></script>
 <script src="assets/js/idx.js?v=3"></script>
 <script>
   (function () {
@@ -132,11 +140,27 @@
     // =====================================================================
     // THE ONLY LINE THAT CHANGES when Marie sends her IDX link.
     //
-    // Paste the frameable search URL from her Rapattoni MLS profile between
-    // the quotes. It must be an https:// link — an http:// link will be
-    // blocked outright, because this page is served over https.
+    // Where it comes from: MLS Dashboard -> Admin -> IDX/Public Links ->
+    // section "IDX" -> "Property Search" -> use the WITHOUT NAVIGATION BAR
+    // link (the with-nav one duplicates Marie's own menu inside the frame).
+    //
+    // Expected shape (ARGUMENT is her personal token, unique to her account):
+    //   https://rebareis.rapmls.com/scripts/mgrqispi.dll?APPNAME=ReBareis
+    //     &PRGNAME=MLSLogin&ARGUMENT=<token>
+    //
+    // Prerequisites, per the BAREIS instructions: the BROKER must be opted in
+    // to IDX, and Marin's Finest must switch on IDX access for Marie
+    // individually (Office Menu -> Manage IDX Member Access). Until then the
+    // IDX/Public Links page will not appear for her at all.
+    //
+    // Verified 2026-08-18: rebareis.rapmls.com sends no X-Frame-Options and no
+    // CSP frame-ancestors, so it permits being framed from marieborders.com.
+    // No allow-listing by BAREIS is required.
     //
     // Her MLS login cannot be shared, so this link has to come from her.
+    // Other links available on the same page, if we want them later:
+    // Open Houses Search, Featured Properties, and Agent Information & Lead
+    // Generation (that last one is the lead-capture path for this option).
     // =====================================================================
     var FRAME_URL = '';
 

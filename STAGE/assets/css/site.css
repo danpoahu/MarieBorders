@@ -1203,6 +1203,49 @@ p { margin-bottom: var(--s4); }
   color: var(--ink-muted);
 }
 
+/* ---------- IDX version toggle (A/B comparison) ---------- */
+.idx-toggle { margin: 0 0 var(--s6); }
+.idx-toggle__label {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: var(--s3);
+}
+.idx-toggle__set {
+  display: inline-flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--hush);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #fff;
+}
+.idx-toggle__opt {
+  display: block;
+  padding: var(--s3) var(--s5);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-right: 1px solid var(--hush);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.idx-toggle__opt:last-child { border-right: 0; }
+.idx-toggle__opt:hover { background: var(--paper-deep); color: var(--ink); }
+.idx-toggle__opt.is-active { background: var(--accent); color: #fff; }
+.idx-toggle__opt.is-active:hover { background: var(--accent-deep); color: #fff; }
+.idx-toggle__opt small {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.75;
+  margin-top: 2px;
+}
+@media (max-width: 560px) {
+  .idx-toggle__set { display: flex; width: 100%; }
+  .idx-toggle__opt { flex: 1; text-align: center; }
+}
+
 /* ---------- IDX framed version (Option 1 comparison) ---------- */
 /* Fixed height with an inner scrollbar is not a styling choice — a cross-origin
    frame cannot report its content height, so it cannot be auto-sized. This IS
