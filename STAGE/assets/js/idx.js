@@ -56,6 +56,13 @@
     // BAREIS feed may differ again, so it lives here rather than inline.
     SORT_NEWEST_FIELD: 'ModificationTimestamp',
 
+    // Restrict to homes for sale. Without this, ACTRIS's 9,366 "Active"
+    // records include 2,397 residential leases, 290 commercial leases, 1,399
+    // land and 676 farm listings — all of which rendered with a "For Sale"
+    // badge, so a $2,000/mo office lease appeared as a $2,000 house. Only
+    // 3,892 are actually homes for sale. Set to '' to show every property type.
+    PROPERTY_TYPE: 'Residential',
+
     // Required by the MLS display rules. The real text comes from BAREIS on
     // licensing; this is the standard IDX form and is a placeholder until they
     // supply theirs.
@@ -187,6 +194,9 @@
     if (p.beds)     filters.push('BedroomsTotal ge ' + Number(p.beds));
     if (p.baths)    filters.push('BathroomsTotalInteger ge ' + Number(p.baths));
     if (p.type)     filters.push("PropertySubType eq '" + String(p.type).replace(/'/g, "''") + "'");
+    if (CONFIG.PROPERTY_TYPE) {
+      filters.push("PropertyType eq '" + CONFIG.PROPERTY_TYPE.replace(/'/g, "''") + "'");
+    }
 
     var order = p.sort === 'price-asc'  ? 'ListPrice asc'
               : p.sort === 'price-desc' ? 'ListPrice desc'
@@ -215,6 +225,9 @@
     if (p.beds)     items = items.filter(function (r) { return (r.BedroomsTotal || 0) >= Number(p.beds); });
     if (p.baths)    items = items.filter(function (r) { return (r.BathroomsTotalInteger || 0) >= Number(p.baths); });
     if (p.type)     items = items.filter(function (r) { return r.PropertySubType === p.type; });
+    if (CONFIG.PROPERTY_TYPE) {
+      items = items.filter(function (r) { return !r.PropertyType || r.PropertyType === CONFIG.PROPERTY_TYPE; });
+    }
 
     items.sort(function (a, b) {
       if (p.sort === 'price-asc')  return (a.ListPrice || 0) - (b.ListPrice || 0);
