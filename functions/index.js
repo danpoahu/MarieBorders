@@ -32,6 +32,7 @@
 
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onObjectFinalized } = require('firebase-functions/v2/storage');
+const { onRequest } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
 const { setGlobalOptions } = require('firebase-functions/v2');
 const { initializeApp } = require('firebase-admin/app');
@@ -60,6 +61,7 @@ setGlobalOptions({
 });
 
 const RESEND_API_KEY = defineSecret('RESEND_API_KEY');
+const BRIDGE_ACCESS_TOKEN = defineSecret('BRIDGE_ACCESS_TOKEN');
 
 // ---- BRAND / ROUTING CONFIG (edit + redeploy to change) ----
 const BRAND = {
@@ -755,6 +757,100 @@ exports.onListingVideoUploaded = onObjectFinalized(
       }
     } finally {
       await cleanupTmp();
+    }
+  }
+);
+
+
+// ===========================================================================
+// IDX / RESO listing search proxy
+// ===========================================================================
+// The site's IDX pages (idx-search.html, idx-listing.html) call this instead
+// of hitting the RESO feed directly. Reason: danpoahu/MarieBorders is a PUBLIC
+// repo, so an access token shipped in static JS would be a published token.
+// The token lives only in Secret Manager and never leaves this function.
+//
+// Set the secret before the first deploy:
+//   firebase functions:secrets:set BRIDGE_ACCESS_TOKEN
+//
+// DATASET: 'abor_ref' is the free RESO reference feed (Austin's Unlock MLS,
+// previous year's data) used to prove the pipeline. When/if BAREIS issues a
+// real data license, change this one string to the BAREIS dataset.
+const IDX_DATASET = 'abor_ref';
+const IDX_UPSTREAM = 'https://api.bridgedataoutput.com/api/v2/OData/' + IDX_DATASET + '/Property';
+
+// Only these OData params are forwarded. Anything else the caller sends is
+// dropped — the browser does not get to compose arbitrary upstream queries.
+const IDX_ALLOWED_PARAMS = ['$filter', '$orderby', '$top', '$skip', '$count', '$select'];
+const IDX_MAX_TOP = 50;
+
+exports.idxSearch = onRequest(
+  {
+    secrets: [BRIDGE_ACCESS_TOKEN],
+    cors: ['https://marieborders.com', 'https://www.marieborders.com'],
+    maxInstances: 10
+  },
+  async (req, res) => {
+    if (req.method !== 'GET') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const token = BRIDGE_ACCESS_TOKEN.value();
+    if (!token) {
+      console.error('[idxSearch] BRIDGE_ACCESS_TOKEN is not set');
+      res.status(503).json({ error: 'Listing feed is not configured' });
+      return;
+    }
+
+    // Single-listing lookup by ListingKey takes priority over a search.
+    const key = typeof req.query.key === 'string' ? req.query.key : null;
+
+    const upstream = new URL(IDX_UPSTREAM);
+    if (key) {
+      // Escape single quotes for OData string literals.
+      upstream.searchParams.set('$filter', "ListingKey eq '" + key.replace(/'/g, "''") + "'");
+      upstream.searchParams.set('$top', '1');
+    } else {
+      for (const name of IDX_ALLOWED_PARAMS) {
+        const raw = req.query[name];
+        if (typeof raw !== 'string' || raw === '') continue;
+        if (name === '$top') {
+          const n = Math.min(parseInt(raw, 10) || 10, IDX_MAX_TOP);
+          upstream.searchParams.set(name, String(n));
+        } else {
+          upstream.searchParams.set(name, raw);
+        }
+      }
+      if (!upstream.searchParams.has('$top')) upstream.searchParams.set('$top', '10');
+    }
+
+    try {
+      const upstreamRes = await fetch(upstream.toString(), {
+        headers: {
+          Authorization: 'Bearer ' + token,
+          Accept: 'application/json'
+        }
+      });
+
+      const body = await upstreamRes.text();
+
+      if (!upstreamRes.ok) {
+        // Log the detail for us; never return the upstream body to the browser
+        // (it can echo the query, and on some errors the token).
+        console.error('[idxSearch] upstream ' + upstreamRes.status + ': ' + body.slice(0, 400));
+        res.status(upstreamRes.status === 401 || upstreamRes.status === 403 ? 503 : 502)
+           .json({ error: 'Listing feed unavailable' });
+        return;
+      }
+
+      // Listing data changes slowly; 5 minutes at the edge keeps us well inside
+      // any rate limit without the page ever feeling stale.
+      res.set('Cache-Control', 'public, max-age=300, s-maxage=300');
+      res.status(200).type('application/json').send(body);
+    } catch (err) {
+      console.error('[idxSearch] request failed:', err && err.message);
+      res.status(502).json({ error: 'Listing feed unavailable' });
     }
   }
 );

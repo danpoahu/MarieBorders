@@ -1203,6 +1203,65 @@ p { margin-bottom: var(--s4); }
   color: var(--ink-muted);
 }
 
+/* ---------- IDX framed version (Option 1 comparison) ---------- */
+/* Fixed height with an inner scrollbar is not a styling choice — a cross-origin
+   frame cannot report its content height, so it cannot be auto-sized. This IS
+   the constraint the framed version imposes. */
+.idx-frame-wrap {
+  position: relative;
+  width: 100%;
+  height: 1100px;
+  border: 1px solid var(--hush);
+  border-radius: var(--radius);
+  background: #fff;
+  overflow: hidden;
+}
+@media (max-width: 720px) { .idx-frame-wrap { height: 78vh; min-height: 480px; } }
+
+.idx-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.idx-frame-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s6);
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent, transparent 12px,
+      rgba(168, 133, 76, 0.04) 12px, rgba(168, 133, 76, 0.04) 24px
+    ),
+    var(--paper);
+}
+.idx-frame-empty__inner { max-width: 46ch; text-align: center; }
+.idx-frame-empty h3 {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  color: var(--ink);
+  margin-bottom: var(--s4);
+}
+.idx-frame-empty p {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--ink-soft);
+  margin-bottom: var(--s4);
+}
+.idx-frame-empty__note {
+  font-size: 0.85rem !important;
+  color: var(--ink-muted) !important;
+  border-top: 1px solid var(--hush);
+  padding-top: var(--s4);
+  margin-bottom: 0 !important;
+}
+
 /* ---------- IDX detail page ---------- */
 .idx-detail__head { margin-bottom: var(--s6); }
 .idx-detail__price {
