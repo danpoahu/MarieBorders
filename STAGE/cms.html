@@ -1707,6 +1707,7 @@ import {
   updateDoc,
   deleteDoc,
   query,
+  where,
   orderBy,
   onSnapshot,
   serverTimestamp,
@@ -1751,6 +1752,11 @@ const db = initializeFirestore(app, {
 });
 const auth = getAuth(app);
 const storage = getStorage(app);
+
+/* Exposed for the Website Analytics panel, which is a classic <script> and
+   therefore cannot reach these module-scoped bindings. */
+window.MB = window.MB || {};
+window.MB.cmsFs = { db, collection, doc, getDoc, getDocs, query, where, orderBy, Timestamp };
 
 /* ===========================================================
    Toast
