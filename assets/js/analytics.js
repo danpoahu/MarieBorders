@@ -82,7 +82,9 @@
 
   function pageKey() {
     var p = path.replace('/STAGE/', '/');
-    return slug(p, 'home');
+    var k = slug(p, 'home');
+    // "/" and "/index.html" are the same page — don't split the home count
+    return (k === 'index') ? 'home' : k;
   }
 
   function referrerKey() {

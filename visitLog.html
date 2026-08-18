@@ -119,6 +119,12 @@
   .where strong { color: var(--ink); }
   .empty { text-align: center; padding: 2.5rem; color: var(--ink-muted); }
   .note { font-size: 0.8rem; color: var(--ink-muted); margin-top: 1rem; }
+  .geo-warn {
+    background: #fcf3e6; border: 1px solid #e7c98f; border-left: 4px solid var(--accent);
+    border-radius: 6px; padding: 0.7rem 1rem; margin-bottom: 1rem;
+    font-size: 0.82rem; color: var(--ink-soft);
+  }
+  .geo-warn strong { color: var(--accent-deep); }
 </style>
 </head>
 <body>
@@ -153,6 +159,7 @@
   <div class="wrap">
     <div class="stats" id="stats"></div>
     <div class="hidden-ips" id="hidden-ips" style="display:none;"></div>
+    <div class="geo-warn" id="geo-warn" style="display:none;"></div>
     <div id="table-wrap"></div>
     <p class="note">
       Click any IP address to hide it (e.g. your own) — hidden IPs are stored only in this
@@ -188,6 +195,10 @@ const db = initializeFirestore(app, { experimentalForceLongPolling: true });
 const HIDDEN_KEY = 'mb-stage-hidden-ips';
 let allVisits = [];
 let geoMap = {};
+// Tracks the last geo-resolution pass so we can tell a *blocked* lookup
+// (file:// cross-origin fetch refused — common in Safari) apart from a
+// genuinely unknown IP. `threw` > 0 means the browser refused the request.
+let geoStatus = { tried: 0, threw: 0 };
 
 function getHidden() {
   try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'); }
@@ -222,6 +233,25 @@ function fmtWhen(ts) {
     + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
+function updateGeoNotice(unresolvedCount) {
+  const el = document.getElementById('geo-warn');
+  if (!el) return;
+  // Only warn when rows are blank AND the browser actually refused a lookup —
+  // otherwise a blank "Where" might just be an unknown IP, not a problem.
+  if (unresolvedCount > 0 && geoStatus.threw > 0) {
+    el.style.display = 'block';
+    el.innerHTML =
+      '<strong>' + unresolvedCount + ' visit' + (unresolvedCount === 1 ? '' : 's') +
+      ' couldn’t show a location.</strong> The lookup was blocked by the browser — this ' +
+      'happens when the file is opened directly in <strong>Safari</strong>, which refuses cross-origin ' +
+      'lookups from a local file. Open this file in <strong>Chrome</strong> to resolve them live, or ' +
+      'run the one-time geo backfill so locations are stored on the records themselves (then they show ' +
+      'in any browser).';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
 function render() {
   const hidden = getHidden();
   const visible = allVisits.filter(v => hidden.indexOf(v.ip) === -1);
@@ -252,6 +282,7 @@ function render() {
   const tw = document.getElementById('table-wrap');
   if (!visible.length) {
     tw.innerHTML = '<div class="empty">No visits to show.</div>';
+    updateGeoNotice(0);
     return;
   }
   tw.innerHTML = '<table><thead><tr>'
@@ -281,6 +312,15 @@ function render() {
       if (h.indexOf(ip) === -1) { h.push(ip); setHidden(h); render(); }
     });
   });
+
+  // Count visible rows that have an IP but resolved to no location at all,
+  // then show the warning if the browser blocked the lookups.
+  const unresolved = visible.filter(v => {
+    const g = (v.ip && geoMap[v.ip]) || {};
+    const has = g.city || v.city || g.region || v.region || g.country || v.country;
+    return v.ip && !has;
+  }).length;
+  updateGeoNotice(unresolved);
 }
 
 // IP -> location resolution. The site only logs the IP; this viewer turns
@@ -294,15 +334,23 @@ function getGeoCache() {
 }
 async function resolveGeo(ips) {
   const cache = getGeoCache();
+  geoStatus = { tried: 0, threw: 0 };
   for (const ip of ips) {
     if (cache[ip] && cache[ip].city) continue; // already resolved
+    geoStatus.tried++;
     try {
-      const r = await fetch('https://ipwho.is/' + encodeURIComponent(ip));
+      // ipinfo.io (keyless, CORS-enabled). We moved off ipwho.is because its
+      // free plan stopped supporting CORS in June 2026 (browser calls 403).
+      const r = await fetch('https://ipinfo.io/' + encodeURIComponent(ip) + '/json');
       const d = r.ok ? await r.json() : null;
-      if (d && d.success !== false && d.city) {
+      if (d && d.city) {
         cache[ip] = { city: d.city || null, region: d.region || null, country: d.country || null };
       }
-    } catch (e) { /* leave unresolved — retry on next open */ }
+    } catch (e) {
+      // The browser refused the request (CORS / file:// null-origin block),
+      // not just an unknown IP. Record it so render() can warn the user.
+      geoStatus.threw++;
+    }
   }
   try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch (e) {}
   return cache;
