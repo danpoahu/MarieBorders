@@ -773,14 +773,18 @@ exports.onListingVideoUploaded = onObjectFinalized(
 // Set the secret before the first deploy:
 //   firebase functions:secrets:set BRIDGE_ACCESS_TOKEN
 //
-// DATASET: 'test' is the free Bridge sandbox this application is provisioned
-// for — 10,000 SYNTHETIC listings (invented cities like "Wolfbury TX") in real
-// RESO Data Dictionary fields, with real photo URLs. It proves the pipeline
-// without any chance of synthetic records being mistaken for real inventory.
-// NOTE: the Austin reference feed ('actris_ref') returns 401 for this app, and
-// 'abor_ref' does not exist. When/if BAREIS issues a real data license, change
-// this one string to the BAREIS dataset code.
-const IDX_DATASET = 'test';
+// DATASET: the ACTRIS Reference Server — Austin's Unlock MLS, ~52,600 REAL
+// listings with working photos. Access approved 2026-08-18 and it EXPIRES
+// 2027-02-18; renew with Bridge before then or live searches start 401ing.
+// This is the free development feed BAREIS pointed us at, and the demo they
+// want to review before issuing a data licence.
+// Previously 'test' (10,000 synthetic listings) — still valid as a fallback,
+// but its photo CDN 403s every request. When/if BAREIS issues a real data
+// licence, change this one string to the BAREIS dataset code.
+// NOTE: field coverage differs per dataset. ACTRIS has no ClosePrice,
+// DaysOnMarket or OnMarketDate, and REJECTS $orderby=OnMarketDate with a 400 —
+// see SORT_NEWEST_FIELD in idx.js.
+const IDX_DATASET = 'actris_ref';
 const IDX_UPSTREAM = 'https://api.bridgedataoutput.com/api/v2/OData/' + IDX_DATASET + '/Property';
 
 // Only these OData params are forwarded. Anything else the caller sends is

@@ -8,8 +8,9 @@
  *   'sample' — MB.idxSampleData (idx-data.js). Fictional records in real RESO
  *              field names. Used while we wait on a Bridge access token.
  *   'live'   — a Cloud Function proxy that holds the token server-side and
- *              forwards to the RESO Property resource. Currently the Bridge
- *              'test' dataset: 10,000 synthetic listings in real RESO fields.
+ *              forwards to the RESO Property resource. Now the ACTRIS
+ *              Reference Server (Austin's Unlock MLS, ~52,600 real listings
+ *              with working photos), approved 2026-08-18, expires 2027-02-18.
  *              Append ?source=live to any IDX page to use it.
  *
  * WHY A PROXY AND NOT A DIRECT BROWSER FETCH
@@ -48,6 +49,12 @@
 
     // Results per page.
     PAGE_SIZE: 6,
+
+    // Which field means "newest" upstream. NOT the same on every dataset:
+    // the Bridge 'test' sandbox has OnMarketDate, but ACTRIS rejects it with
+    // 400 "Bad order by field" — ModificationTimestamp is valid on both. A real
+    // BAREIS feed may differ again, so it lives here rather than inline.
+    SORT_NEWEST_FIELD: 'ModificationTimestamp',
 
     // Required by the MLS display rules. The real text comes from BAREIS on
     // licensing; this is the standard IDX form and is a placeholder until they
@@ -184,7 +191,7 @@
     var order = p.sort === 'price-asc'  ? 'ListPrice asc'
               : p.sort === 'price-desc' ? 'ListPrice desc'
               : p.sort === 'beds-desc'  ? 'BedroomsTotal desc'
-              : 'OnMarketDate desc';
+              : CONFIG.SORT_NEWEST_FIELD + ' desc';
 
     return {
       '$filter': filters.join(' and '),
