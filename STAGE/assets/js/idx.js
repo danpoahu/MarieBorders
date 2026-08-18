@@ -155,7 +155,12 @@
     if (url.indexOf('placeholder:') === 0) {
       return placeholderSvg(url.slice('placeholder:'.length), seed);
     }
-    return '<img src="' + esc(url) + '" alt="' + esc(altText || '') + '" loading="lazy">';
+    // A dead photo URL must degrade to the themed placeholder, not leave a
+    // broken image with alt text sprawled across the card. Real MLS feeds do
+    // ship dead photo links, and the Bridge sandbox's CDN 403s every request.
+    return '<img src="' + esc(url) + '" alt="' + esc(altText || '') + '" loading="lazy"'
+         + ' data-ph="' + esc(altText || 'Photo') + '" data-seed="' + esc(seed || '') + '"'
+         + ' onerror="MB.idx.mediaFallback(this)">';
   }
 
   // ---------- OData query builder (used by the live path) ----------
@@ -287,6 +292,19 @@
       }
       var found = (MB.idxSampleData || []).filter(function (r) { return r.ListingKey === key; });
       return Promise.resolve(found.length ? found[0] : null);
+    },
+
+    /**
+     * Swap a failed <img> for the themed placeholder. Referenced from an
+     * inline onerror, because cards are written with innerHTML and a listener
+     * attached afterwards would miss images that fail before it is bound.
+     */
+    mediaFallback: function (img) {
+      if (!img || img.getAttribute('data-fallen') === '1') return;
+      img.setAttribute('data-fallen', '1');
+      var label = img.getAttribute('data-ph') || 'Photo';
+      var seed  = img.getAttribute('data-seed') || label;
+      try { img.outerHTML = placeholderSvg(label, seed); } catch (e) { img.style.display = 'none'; }
     },
 
     /** Card markup — deliberately the same classes as MB.renderListingCard. */
