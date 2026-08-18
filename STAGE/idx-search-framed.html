@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/site.css?v=2.7">
+<link rel="stylesheet" href="assets/css/site.css?v=2.8">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -98,9 +98,57 @@
               </div>
             </div>
 
+            <div class="rapx__nav">
+              <span class="is-on" data-rapx-tab="criteria">Search Properties</span>
+              <span data-rapx-tab="results">Results</span>
+              <span>Contact</span>
+            </div>
+
             <div class="rapx__bar"><span class="rapx__btn">&#128438; Print This Page</span></div>
 
-            <div class="rapx__body">
+            <div class="rapx__body" data-rapx-view="criteria">
+              <div class="rapx__toolbar" style="text-align:center;">
+                <span class="rapx__searchbtn">&#128269; Search</span>
+                <span class="rapx__link">&#8635; Reset Criteria</span>
+                &nbsp;&nbsp;<span style="color:#444;">Preview Count:</span> <span style="color:#666;">none</span>
+              </div>
+
+              <div class="rapx__h2">Search Properties</div>
+              <div class="rapx__tabline">
+                <span class="rapx__tab">General Criteria</span>
+                <span class="rapx__link" style="margin-left:14px;font-size:12px;">Additional Criteria</span>
+              </div>
+
+              <div class="rapx__section">Property Types &#94;</div>
+              <div class="rapx__sublabel">Property Types</div>
+              <div class="rapx__checks"><div class="rapx__check"><span class="rapx__box is-checked"></span>Residential</div><div class="rapx__check"><span class="rapx__box"></span>Residential Lease</div><div class="rapx__check"><span class="rapx__box"></span>Lots and Acreage</div><div class="rapx__check"><span class="rapx__box"></span>Multi-Family</div><div class="rapx__check"><span class="rapx__box"></span>Comm/Industrial</div><div class="rapx__check"><span class="rapx__box"></span>Business Opportunity</div></div>
+              <div class="rapx__sublabel">Property Subtypes</div>
+              <div class="rapx__checks"><div class="rapx__check"><span class="rapx__box"></span>Single Family</div><div class="rapx__check"><span class="rapx__box"></span>Condo/TH</div><div class="rapx__check"><span class="rapx__box"></span>Co-op</div><div class="rapx__check"><span class="rapx__box"></span>Mobile Home</div></div>
+
+              <div class="rapx__rule"></div>
+              <div class="rapx__section">Counties &#94;</div>
+              <div class="rapx__input">Begin typing and choose a value.</div>
+
+              <div class="rapx__rule"></div>
+              <div class="rapx__section">Cities &#94;</div>
+              <div class="rapx__input">Begin typing and choose a value.</div>
+
+              <div class="rapx__rule"></div>
+              <div class="rapx__section"># Bedrooms &#94;</div>
+              <div class="rapx__sublabel">From</div>
+              <div class="rapx__input" style="max-width:340px;">&nbsp;</div>
+              <div class="rapx__sublabel">Thru</div>
+              <div class="rapx__input" style="max-width:340px;">&nbsp;</div>
+
+              <div class="rapx__rule"></div>
+              <div class="rapx__section">Price &#94;</div>
+              <div class="rapx__sublabel">From</div>
+              <div class="rapx__input" style="max-width:340px;">&nbsp;</div>
+              <div class="rapx__sublabel">Thru</div>
+              <div class="rapx__input" style="max-width:340px;">&nbsp;</div>
+            </div>
+
+            <div class="rapx__body" data-rapx-view="results" hidden>
               <div class="rapx__title">Marin County &lt; $3M</div>
               <div class="rapx__sort">Sort &#9662;</div>
               <div class="rapx__tabline"><span class="rapx__tab">Residential (37)</span></div>
@@ -151,6 +199,26 @@
             </div>
           </div>
         </div>
+        <script>
+          (function () {
+            var tabs  = document.querySelectorAll('[data-rapx-tab]');
+            var views = document.querySelectorAll('[data-rapx-view]');
+            if (!tabs.length) return;
+            Array.prototype.forEach.call(tabs, function (t) {
+              t.addEventListener('click', function () {
+                var want = t.getAttribute('data-rapx-tab');
+                Array.prototype.forEach.call(tabs, function (x) {
+                  x.classList.toggle('is-on', x.getAttribute('data-rapx-tab') === want);
+                });
+                Array.prototype.forEach.call(views, function (v) {
+                  v.hidden = v.getAttribute('data-rapx-view') !== want;
+                });
+                var sc = document.querySelector('.rapx');
+                if (sc) sc.scrollTop = 0;
+              });
+            });
+          })();
+        </script>
       </div>
 
       <p class="idx-frame-caption">
@@ -158,7 +226,7 @@
         representation, not a live feed. Its colours, type, chip layout and row format were taken from the
         <em>live</em> Rapattoni IDX panel running at another MLS on the same system BAREIS uses &mdash; so the blue
         headings, grey chips, dark bar and plain sans-serif are the real product&rsquo;s, not a guess. Marie&rsquo;s
-        agent details and listings would differ; the styling would not, because it isn&rsquo;t ours to change.
+        agent details and listings would differ; the styling would not, because it isn&rsquo;t ours to change. <strong>Yes, it has its own search criteria</strong> &mdash; the Property Search link lands on the form first, then shows results in the same box; use <em>Search Properties</em> / <em>Results</em> above to see both. Marie can choose which criteria appear via <em>Admin &rarr; IDX Search Setup</em>.
       </p>
 
       <p class="idx-disclaimer" id="idx-disclaimer"></p>
@@ -207,7 +275,7 @@
   </div>
 </footer>
 
-<script src="assets/js/site.js?v=2.7"></script>
+<script src="assets/js/site.js?v=2.8"></script>
 <script src="assets/js/idx.js?v=3"></script>
 <script>
   (function () {
