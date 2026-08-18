@@ -3796,9 +3796,10 @@ window.addEventListener('beforeunload', (e) => {
   }
 
   function anLoad() {
-    var fb = window.MB && window.MB.firebase;
-    if (!fb || !fb.db || !fb.fs) { elStatus.textContent = 'Not connected.'; return; }
-    var fs = fb.db ? fb.fs : null;
+    // cms.html runs Firebase inside a module, so its db/query bindings are not
+    // on window.MB.firebase like the public pages. It exposes them as MB.cmsFs.
+    var C = window.MB && window.MB.cmsFs;
+    if (!C || !C.db) { elStatus.textContent = 'Not connected.'; return; }
     elStatus.textContent = 'Loading…';
 
     var days = dayList(anRange);
@@ -3807,26 +3808,34 @@ window.addEventListener('beforeunload', (e) => {
     fromDate.setHours(0, 0, 0, 0);
 
     // traffic
-    var qStats = fs.query(fs.collection(fb.db, STATS_COLL),
-                          fs.where('date', '>=', from), fs.orderBy('date'));
+    var qStats = C.query(C.collection(C.db, STATS_COLL),
+                         C.where('date', '>=', from), C.orderBy('date'));
 
     // leads — these collections already hold history, so these numbers are
     // real from day one rather than starting at zero like the traffic counters
     var leadCols = ['guideDownloads','contactInquiries','homeValuationLeads',
                     'wishListSubmissions','openHouseRSVPs'];
-    var ts = fs.Timestamp.fromDate(fromDate);
+    var ts = C.Timestamp.fromDate(fromDate);
 
     Promise.all([
-      fs.getDocs(qStats),
-      fs.getDocs(fs.collection(fb.db, LIST_COLL))
+      C.getDocs(qStats),
+      C.getDocs(C.collection(C.db, LIST_COLL)),
+      C.getDocs(C.collection(C.db, 'listings'))
     ].concat(leadCols.map(function (c) {
-      return fs.getDocs(fs.query(fs.collection(fb.db, c), fs.where('createdAt', '>=', ts)))
+      return C.getDocs(C.query(C.collection(C.db, c), C.where('createdAt', '>=', ts)))
         .catch(function () { return { size: 0, forEach: function () {} }; });
     })))
     .then(function (res) {
-      var statsSnap = res[0], listSnap = res[1];
+      var statsSnap = res[0], listSnap = res[1], listingsSnap = res[2];
       var leadCounts = {};
-      leadCols.forEach(function (c, i) { leadCounts[c] = res[2 + i].size || 0; });
+      leadCols.forEach(function (c, i) { leadCounts[c] = res[3 + i].size || 0; });
+
+      // id -> street address, so the table reads as places not document ids
+      var addrById = {};
+      listingsSnap.forEach(function (d) {
+        var v = d.data() || {};
+        if (v.address) addrById[d.id] = v.address.street + ', ' + v.address.city;
+      });
 
       var byDay = {}, pages = {}, refs = {}, devices = {}, views = 0, visitors = 0;
       statsSnap.forEach(function (d) {
@@ -3873,13 +3882,7 @@ window.addEventListener('beforeunload', (e) => {
         var max = lrows[0].n;
         elLists.innerHTML = '<table class="an-table"><thead><tr><th>Listing</th><th>Views</th></tr></thead><tbody>'
           + lrows.map(function (r) {
-              var label = r.id;
-              try {
-                if (window.MB && MB.listings && MB.listings.getById) {
-                  var l = MB.listings.getById(r.id);
-                  if (l && l.address) label = l.address.street + ', ' + l.address.city;
-                }
-              } catch (e) {}
+              var label = addrById[r.id] || r.id;
               var pct = max ? Math.round((r.n / max) * 100) : 0;
               return '<tr><td class="an-bar-cell" style="--w:' + pct + '%"><span>'
                    + esc(label) + '</span></td><td>' + num(r.n) + '</td></tr>';
