@@ -152,6 +152,52 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // ---- SITE ANALYTICS (first-party traffic counters) ----
+    // Anonymous counters written straight from the browser on every page view:
+    // no IP, no geo, no cookies, nothing identifying. Only an authed user
+    // (Marie in the CMS) can read them back.
+    //
+    // Public write is unavoidable for browser-side counting, so the shape is
+    // pinned down instead: known top-level fields only, the doc id must equal
+    // the `date` field, and that date must look like YYYY-MM-DD. A determined
+    // person could still inflate a count — accepted trade against paying for a
+    // Cloud Function on every page view. Nothing here is destructive: deletes
+    // and reads stay authed-only.
+    function statsShapeOk(id) {
+      return request.resource.data.date == id
+        && id.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.keys().hasOnly(
+             ['date','views','visitors','pages','referrers','devices','updatedAt']);
+    }
+
+    match /siteStats/{dayId} {
+      allow read, list: if isAuthed();
+      allow create, update: if statsShapeOk(dayId);
+      allow delete: if isAuthed();
+    }
+
+    match /siteStatsPreview/{dayId} {
+      allow read, list: if isAuthed();
+      allow create, update: if statsShapeOk(dayId);
+      allow delete: if isAuthed();
+    }
+
+    function listingStatsShapeOk() {
+      return request.resource.data.keys().hasOnly(['views','lastViewedAt']);
+    }
+
+    match /listingStats/{listingId} {
+      allow read, list: if isAuthed();
+      allow create, update: if listingStatsShapeOk();
+      allow delete: if isAuthed();
+    }
+
+    match /listingStatsPreview/{listingId} {
+      allow read, list: if isAuthed();
+      allow create, update: if listingStatsShapeOk();
+      allow delete: if isAuthed();
+    }
+
     // ---- VIDEO JOBS (CMS-only; CF writes results via admin SDK) ----
     // The CMS creates a job doc and listens for the compress result; the
     // onListingVideoUploaded function updates it (admin SDK, bypasses rules).

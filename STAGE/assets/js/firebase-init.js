@@ -52,6 +52,7 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
+  increment,
   Timestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 import {
@@ -127,6 +128,7 @@ window.MB.firebase = {
     orderBy,
     onSnapshot,
     serverTimestamp,
+    increment,
     Timestamp
   },
   authApi: {
