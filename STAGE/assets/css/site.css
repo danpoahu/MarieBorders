@@ -1075,6 +1075,250 @@ p { margin-bottom: var(--s4); }
 .notfound h1 { font-size: clamp(3rem, 8vw, 5rem); margin-bottom: var(--s4); }
 .notfound p { font-size: 1.15rem; margin-bottom: var(--s5); }
 
+/* ---------- IDX / MLS search ---------- */
+/* Full-MLS search results. Cards intentionally reuse .card / .listings-grid so
+   an MLS listing and one of Marie's own listings are visually identical. */
+
+.idx-notice {
+  background: var(--paper-deep);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: var(--s4) var(--s5);
+  margin-bottom: var(--s6);
+}
+.idx-notice__label {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 100px;
+  padding: 2px 10px;
+  margin-bottom: var(--s2);
+}
+.idx-notice p {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.idx-filters {
+  background: #fff;
+  border: 1px solid var(--hush);
+  border-radius: var(--radius);
+  padding: var(--s5);
+  margin-bottom: var(--s6);
+}
+.idx-filters__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s4);
+}
+@media (min-width: 620px)  { .idx-filters__grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 960px)  { .idx-filters__grid { grid-template-columns: repeat(4, 1fr); } }
+.idx-filters__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s4);
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hush);
+}
+.idx-filters__actions .btn { margin: 0; }
+.idx-reset {
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 0;
+}
+.idx-reset:hover { color: var(--accent-deep); }
+
+.idx-results-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s5);
+}
+.idx-results-head__count {
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  color: var(--ink);
+}
+.idx-results-head__count span { color: var(--accent-deep); }
+.idx-sort {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+.idx-sort select {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--hush);
+  border-radius: var(--radius);
+  background: #fff;
+  color: var(--ink);
+}
+
+.idx-card__mls {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: var(--ink-muted);
+  border-top: 1px solid var(--hush);
+  padding-top: var(--s3);
+}
+
+.idx-more { text-align: center; margin-top: var(--s7); }
+
+.idx-loading {
+  text-align: center;
+  padding: var(--s8) 0;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  color: var(--ink-muted);
+}
+
+.idx-disclaimer {
+  margin-top: var(--s7);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--hush);
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}
+
+/* ---------- IDX detail page ---------- */
+.idx-detail__head { margin-bottom: var(--s6); }
+.idx-detail__price {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  color: var(--ink);
+  line-height: 1.1;
+}
+.idx-detail__address {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  color: var(--ink-soft);
+  margin-top: var(--s2);
+}
+.idx-detail__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin-top: var(--s4);
+}
+.idx-badge {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 100px;
+  color: #fff;
+}
+.idx-badge--active  { background: #2d6a4f; }
+.idx-badge--pending { background: #b06b1c; }
+.idx-badge--sold    { background: #7a3134; }
+.idx-badge--muted   { background: transparent; color: var(--ink-muted); border: 1px solid var(--hush); }
+
+.idx-gallery {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s3);
+  margin-bottom: var(--s7);
+}
+@media (min-width: 760px) {
+  .idx-gallery { grid-template-columns: 2fr 1fr; }
+  .idx-gallery__main { grid-row: span 2; }
+}
+.idx-gallery figure {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--paper-deep);
+  aspect-ratio: 4 / 3;
+}
+.idx-gallery__main figure, .idx-gallery__main { aspect-ratio: 4 / 3; }
+.idx-gallery img, .idx-gallery svg {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+
+.idx-facts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--s5);
+  padding: var(--s6) 0;
+  border-top: 1px solid var(--hush);
+  border-bottom: 1px solid var(--hush);
+  margin-bottom: var(--s6);
+}
+@media (min-width: 620px) { .idx-facts { grid-template-columns: repeat(4, 1fr); } }
+.idx-fact__value {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  color: var(--ink);
+  line-height: 1;
+}
+.idx-fact__label {
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-top: var(--s2);
+}
+
+.idx-remarks {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--ink-soft);
+  max-width: 68ch;
+}
+.idx-remarks p { margin-bottom: var(--s4); }
+
+.idx-spec {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  margin-top: var(--s6);
+}
+@media (min-width: 620px) { .idx-spec { grid-template-columns: 1fr 1fr; column-gap: var(--s7); } }
+.idx-spec__row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--hush);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+}
+.idx-spec__row dt { color: var(--ink-muted); }
+.idx-spec__row dd { color: var(--ink); text-align: right; }
+
+.idx-courtesy {
+  margin-top: var(--s6);
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

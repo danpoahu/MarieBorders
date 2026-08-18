@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Property Details | Marie Borders</title>
+<meta name="description" content="Marin County property details, presented by Marie Borders.">
+<meta property="og:title" content="Property Details | Marie Borders">
+<meta property="og:description" content="Marin County property details, presented by Marie Borders.">
+<meta property="og:image" content="assets/images/hero.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://marieborders.com/STAGE/idx-listing.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css?v=2.5">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="brand" href="index.html">Marie Borders</a>
+    <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="primary-nav">
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <nav class="nav" id="primary-nav" aria-label="Primary">
+      <a class="nav__link" href="index.html">Home</a>
+      <a class="nav__link" href="about.html">About</a>
+      <a class="nav__link" href="idx-search.html">Search Homes</a>
+      <a class="nav__link" href="for-sale.html">For Sale</a>
+      <a class="nav__link" href="wish-list.html">Wish List</a>
+      <a class="nav__link" href="home-value.html">Home Value</a>
+      <a class="nav__link" href="guides.html">Guides</a>
+      <a class="nav__link" href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="section">
+    <div class="wrap">
+      <p style="margin-bottom:var(--s5);">
+        <a class="card__link" href="idx-search.html">&larr; Back to search</a>
+      </p>
+      <div id="idx-detail"><div class="idx-loading">Loading property…</div></div>
+    </div>
+  </section>
+
+  <section class="band-contact">
+    <div class="wrap wrap--narrow">
+      <h2>Want to See This Home?</h2>
+      <p>Marie can arrange a private showing, pull the disclosure package, and tell you honestly how it compares to everything else on the market right now.</p>
+      <a class="btn" href="contact.html" id="idx-cta">Ask Marie About This Home</a>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__cols">
+      <div>
+        <h4>Contact</h4>
+        <p><a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a></p>
+        <p><a href="tel:+14156011715">(415) 601-1715</a></p>
+        <p>DRE #01256719</p>
+      </div>
+      <div>
+        <h4>About</h4>
+        <p>Marie Borders is a Marin County native and licensed real estate agent representing buyers and sellers across the North Bay.</p>
+      </div>
+      <div>
+        <h4>Brokerage</h4>
+        <p><a href="https://marinsfinest.com" target="_blank" rel="noopener">Marin’s Finest</a></p>
+        <p>Real Estate Associate | Team Leader</p>
+      </div>
+    </div>
+    <div class="site-footer__strip">
+      <span>&copy; <span data-year>2026</span> Marie Borders. Real Estate Associate, DRE #01256719. All rights reserved.</span>
+      <span class="eho">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+        Equal Housing Opportunity
+      </span>
+      <span>Site by <a href="https://oahuappdesign.com" target="_blank" rel="noopener">DP Consulting</a></span>
+      <span>Hero photo by <a href="https://unsplash.com/@jaredlisack" target="_blank" rel="noopener">Jared Lisack</a> on <a href="https://unsplash.com/" target="_blank" rel="noopener">Unsplash</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js?v=2.5"></script>
+<script src="assets/js/idx-data.js?v=1"></script>
+<script src="assets/js/idx.js?v=1"></script>
+<script>
+  (function () {
+    'use strict';
+    var mount = document.getElementById('idx-detail');
+    if (!mount) return;
+    var h = MB.idx.helpers;
+
+    var key = new URLSearchParams(window.location.search).get('key');
+    if (!key) { notFound(); return; }
+
+    function notFound() {
+      mount.innerHTML = '<div class="empty-state">'
+        + '<p>That property is no longer available.</p>'
+        + '<p style="font-family:var(--font-sans);font-size:1rem;">It may have gone off market. Marie can tell you what happened to it and show you what’s comparable.</p>'
+        + '<a class="btn" href="idx-search.html">Back to Search</a></div>';
+    }
+
+    function gallery(reso, street) {
+      var media = (Array.isArray(reso.Media) ? reso.Media.slice() : [])
+        .sort(function (a, b) { return (a.Order || 0) - (b.Order || 0); });
+      if (!media.length) media = [null];
+
+      var main = '<div class="idx-gallery__main"><figure>'
+               + h.renderMedia(media[0], street, reso.ListingKey + '-0')
+               + '</figure></div>';
+      var rest = media.slice(1, 3).map(function (m, i) {
+        return '<figure>' + h.renderMedia(m, street, reso.ListingKey + '-' + (i + 1)) + '</figure>';
+      }).join('');
+      return '<div class="idx-gallery">' + main + rest + '</div>';
+    }
+
+    function specRow(label, value) {
+      if (value == null || value === '' ) return '';
+      return '<div class="idx-spec__row"><dt>' + h.esc(label) + '</dt><dd>' + h.esc(value) + '</dd></div>';
+    }
+
+    function remarksHtml(text) {
+      return String(text || '').split(/\n{2,}/).filter(Boolean)
+        .map(function (p) { return '<p>' + h.esc(p) + '</p>'; }).join('') || '<p>No description provided.</p>';
+    }
+
+    MB.idx.getByKey(key).then(function (reso) {
+      if (!reso) { notFound(); return; }
+
+      var slug   = MB.idx.statusSlug(reso);
+      var street = h.streetLine(reso);
+      var price  = slug === 'sold' && reso.ClosePrice ? h.money(reso.ClosePrice) : h.money(reso.ListPrice);
+
+      document.title = street + ' | Marie Borders';
+
+      var cta = document.getElementById('idx-cta');
+      if (cta) cta.href = 'contact.html?ref=' + encodeURIComponent(reso.ListingId || reso.ListingKey);
+
+      mount.innerHTML = ''
+        + gallery(reso, street + ', ' + (reso.City || ''))
+        + '<div class="idx-detail__head">'
+        +   '<div class="idx-detail__price">' + price + '</div>'
+        +   '<div class="idx-detail__address">' + h.esc(street) + ' &middot; ' + h.esc(h.cityLine(reso)) + '</div>'
+        +   '<div class="idx-detail__badges">'
+        +     '<span class="idx-badge idx-badge--' + slug + '">' + h.statusLabel(slug) + '</span>'
+        +     (reso.DaysOnMarket != null ? '<span class="idx-badge idx-badge--muted">' + h.esc(reso.DaysOnMarket) + ' days on market</span>' : '')
+        +     (reso.PropertySubType ? '<span class="idx-badge idx-badge--muted">' + h.esc(reso.PropertySubType) + '</span>' : '')
+        +   '</div>'
+        + '</div>'
+
+        + '<div class="idx-facts">'
+        +   '<div><div class="idx-fact__value">' + h.esc(reso.BedroomsTotal || '—') + '</div><div class="idx-fact__label">Bedrooms</div></div>'
+        +   '<div><div class="idx-fact__value">' + h.esc((h.bathLabel(reso) || '—').replace(/ Baths?$/, '')) + '</div><div class="idx-fact__label">Bathrooms</div></div>'
+        +   '<div><div class="idx-fact__value">' + h.esc(reso.LivingArea ? h.num(reso.LivingArea) : '—') + '</div><div class="idx-fact__label">Sq Ft</div></div>'
+        +   '<div><div class="idx-fact__value">' + h.esc(reso.YearBuilt || '—') + '</div><div class="idx-fact__label">Year Built</div></div>'
+        + '</div>'
+
+        + '<div class="idx-remarks">' + remarksHtml(reso.PublicRemarks) + '</div>'
+
+        + '<dl class="idx-spec">'
+        +   specRow('MLS number', reso.ListingId)
+        +   specRow('Property type', reso.PropertySubType)
+        +   specRow('Lot size', reso.LotSizeAcres ? reso.LotSizeAcres + ' acres' : null)
+        +   specRow('Garage spaces', reso.GarageSpaces)
+        +   specRow('Pool', reso.PoolPrivateYN === true ? 'Yes' : (reso.PoolPrivateYN === false ? 'No' : null))
+        +   specRow('HOA dues', reso.AssociationFee ? '$' + h.num(reso.AssociationFee) + '/mo' : null)
+        +   specRow('County', reso.CountyOrParish)
+        +   specRow('On market', h.prettyDate(reso.OnMarketDate))
+        +   specRow('Sold', h.prettyDate(reso.CloseDate))
+        + '</dl>'
+
+        + '<p class="idx-courtesy">Listing courtesy of ' + h.esc(reso.ListOfficeName || 'the listing office') + '.</p>'
+        + '<p class="idx-disclaimer">' + h.esc(MB.idx.config.DISCLAIMER) + '</p>';
+    }).catch(function (err) {
+      console.warn('[MB.idx] detail load failed:', err && err.message);
+      notFound();
+    });
+  })();
+</script>
+
+<script src="assets/js/accessibility.js"></script>
+</body>
+</html>

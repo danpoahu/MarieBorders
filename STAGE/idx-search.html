@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Search Marin County Homes | Marie Borders</title>
+<meta name="description" content="Search every active listing across Marin County — filter by city, price, bedrooms and property type, with Marie Borders alongside you.">
+<meta property="og:title" content="Search Marin County Homes | Marie Borders">
+<meta property="og:description" content="Search every active listing across Marin County with Marie Borders.">
+<meta property="og:image" content="assets/images/hero.jpg">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://marieborders.com/STAGE/idx-search.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/site.css?v=2.5">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="brand" href="index.html">Marie Borders</a>
+    <button class="nav-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="primary-nav">
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+      <span class="nav-toggle__bar"></span>
+    </button>
+    <nav class="nav" id="primary-nav" aria-label="Primary">
+      <a class="nav__link" href="index.html">Home</a>
+      <a class="nav__link" href="about.html">About</a>
+      <a class="nav__link" href="idx-search.html">Search Homes</a>
+      <a class="nav__link" href="for-sale.html">For Sale</a>
+      <a class="nav__link" href="wish-list.html">Wish List</a>
+      <a class="nav__link" href="home-value.html">Home Value</a>
+      <a class="nav__link" href="guides.html">Guides</a>
+      <a class="nav__link" href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+  <section class="hero hero--small">
+    <div class="hero__inner">
+      <h1>Search Marin County Homes</h1>
+      <p class="hero__tagline">Every listing on the market — with Marie alongside you</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+
+      <!-- STAGE-ONLY notice. Removed at promotion, once the feed is live. -->
+      <div class="idx-notice" id="idx-demo-notice" hidden>
+        <span class="idx-notice__label">Preview</span>
+        <p><strong>This is a design preview.</strong> The properties below are sample records in the exact format the MLS returns — they are not real homes and not live inventory. The page is wired to the live feed; it switches to real listings the moment the data credentials are in place.</p>
+      </div>
+
+      <form class="idx-filters" id="idx-filters" novalidate>
+        <div class="idx-filters__grid">
+          <div class="field">
+            <label for="f-city">City</label>
+            <select id="f-city" name="city">
+              <option value="">All of Marin</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-type">Property type</label>
+            <select id="f-type" name="type">
+              <option value="">Any type</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-min">Price from</label>
+            <select id="f-min" name="minPrice">
+              <option value="">No minimum</option>
+              <option value="500000">$500,000</option>
+              <option value="750000">$750,000</option>
+              <option value="1000000">$1,000,000</option>
+              <option value="1500000">$1,500,000</option>
+              <option value="2000000">$2,000,000</option>
+              <option value="3000000">$3,000,000</option>
+              <option value="5000000">$5,000,000</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-max">Price to</label>
+            <select id="f-max" name="maxPrice">
+              <option value="">No maximum</option>
+              <option value="750000">$750,000</option>
+              <option value="1000000">$1,000,000</option>
+              <option value="1500000">$1,500,000</option>
+              <option value="2000000">$2,000,000</option>
+              <option value="3000000">$3,000,000</option>
+              <option value="5000000">$5,000,000</option>
+              <option value="10000000">$10,000,000</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-beds">Bedrooms</label>
+            <select id="f-beds" name="beds">
+              <option value="">Any</option>
+              <option value="2">2+</option>
+              <option value="3">3+</option>
+              <option value="4">4+</option>
+              <option value="5">5+</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-baths">Bathrooms</label>
+            <select id="f-baths" name="baths">
+              <option value="">Any</option>
+              <option value="2">2+</option>
+              <option value="3">3+</option>
+              <option value="4">4+</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-status">Status</label>
+            <select id="f-status" name="status">
+              <option value="active">For sale</option>
+              <option value="pending">Pending</option>
+              <option value="sold">Recently sold</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+          <div class="field" style="justify-content:flex-end;">
+            <button class="btn" type="submit">Search</button>
+          </div>
+        </div>
+        <div class="idx-filters__actions">
+          <button class="idx-reset" type="button" id="idx-reset">Clear all filters</button>
+        </div>
+      </form>
+
+      <div class="idx-results-head">
+        <div class="idx-results-head__count" id="idx-count" aria-live="polite">Searching…</div>
+        <label class="idx-sort" for="f-sort">
+          Sort
+          <select id="f-sort" name="sort">
+            <option value="newest">Newest first</option>
+            <option value="price-desc">Price: high to low</option>
+            <option value="price-asc">Price: low to high</option>
+            <option value="beds-desc">Most bedrooms</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="idx-grid" class="listings-grid" aria-live="polite"></div>
+
+      <div class="idx-more">
+        <button class="btn btn--ghost" type="button" id="idx-more" hidden>Show more homes</button>
+      </div>
+
+      <p class="idx-disclaimer" id="idx-disclaimer"></p>
+
+    </div>
+  </section>
+
+  <section class="band-contact">
+    <div class="wrap wrap--narrow">
+      <h2>Found Something You Like?</h2>
+      <p>Searching is the easy part. Marie will pull the disclosures, tell you what the listing photos aren’t showing you, and get you through the door — usually the same week.</p>
+      <a class="btn" href="contact.html">Ask Marie About a Property</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="site-footer__cols">
+      <div>
+        <h4>Contact</h4>
+        <p><a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a></p>
+        <p><a href="tel:+14156011715">(415) 601-1715</a></p>
+        <p>DRE #01256719</p>
+      </div>
+      <div>
+        <h4>About</h4>
+        <p>Marie Borders is a Marin County native and licensed real estate agent representing buyers and sellers across the North Bay.</p>
+      </div>
+      <div>
+        <h4>Brokerage</h4>
+        <p><a href="https://marinsfinest.com" target="_blank" rel="noopener">Marin’s Finest</a></p>
+        <p>Real Estate Associate | Team Leader</p>
+      </div>
+    </div>
+    <div class="site-footer__strip">
+      <span>&copy; <span data-year>2026</span> Marie Borders. Real Estate Associate, DRE #01256719. All rights reserved.</span>
+      <span class="eho">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+        Equal Housing Opportunity
+      </span>
+      <span>Site by <a href="https://oahuappdesign.com" target="_blank" rel="noopener">DP Consulting</a></span>
+      <span>Hero photo by <a href="https://unsplash.com/@jaredlisack" target="_blank" rel="noopener">Jared Lisack</a> on <a href="https://unsplash.com/" target="_blank" rel="noopener">Unsplash</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/site.js?v=2.5"></script>
+<script src="assets/js/idx-data.js?v=1"></script>
+<script src="assets/js/idx.js?v=1"></script>
+<script>
+  (function () {
+    'use strict';
+    var form    = document.getElementById('idx-filters');
+    var grid    = document.getElementById('idx-grid');
+    var countEl = document.getElementById('idx-count');
+    var moreBtn = document.getElementById('idx-more');
+    var sortSel = document.getElementById('f-sort');
+    var resetBtn= document.getElementById('idx-reset');
+    if (!form || !grid) return;
+
+    var skip = 0;
+    var accumulated = [];
+
+    // Populate the city + type dropdowns from whatever the data source offers.
+    function fillSelect(id, values) {
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      values.forEach(function (v) {
+        var o = document.createElement('option');
+        o.value = v; o.textContent = v;
+        sel.appendChild(o);
+      });
+    }
+    fillSelect('f-city', MB.idx.cities());
+    fillSelect('f-type', MB.idx.types());
+
+    // Preview banner + disclaimer
+    if (MB.idx.isSample()) {
+      var notice = document.getElementById('idx-demo-notice');
+      if (notice) notice.hidden = false;
+    }
+    var disc = document.getElementById('idx-disclaimer');
+    if (disc) disc.textContent = MB.idx.config.DISCLAIMER;
+
+    function readParams() {
+      var d = new FormData(form);
+      return {
+        city:     d.get('city')     || '',
+        type:     d.get('type')     || '',
+        minPrice: d.get('minPrice') || '',
+        maxPrice: d.get('maxPrice') || '',
+        beds:     d.get('beds')     || '',
+        baths:    d.get('baths')    || '',
+        status:   d.get('status')   || 'active',
+        sort:     sortSel ? sortSel.value : 'newest'
+      };
+    }
+
+    function emptyState() {
+      return '<div class="empty-state">'
+           +   '<p>No homes match that search.</p>'
+           +   '<p style="font-family:var(--font-sans);font-size:1rem;">Try widening the price range or clearing a filter — or tell Marie what you’re looking for and she’ll watch the market for you.</p>'
+           +   '<a class="btn" href="contact.html">Tell Marie What You Want</a>'
+           + '</div>';
+    }
+
+    function run(append) {
+      if (!append) { skip = 0; accumulated = []; grid.innerHTML = '<div class="idx-loading">Searching the MLS…</div>'; }
+      var params = readParams();
+
+      MB.idx.query(params, skip).then(function (res) {
+        accumulated = append ? accumulated.concat(res.items) : res.items;
+
+        if (!accumulated.length) {
+          grid.innerHTML = emptyState();
+          countEl.textContent = 'No homes found';
+          moreBtn.hidden = true;
+          return;
+        }
+
+        grid.innerHTML = accumulated.map(MB.idx.renderCard).join('');
+        countEl.innerHTML = 'Showing <span>' + accumulated.length + '</span> of <span>' + res.total + '</span> '
+                          + (res.total === 1 ? 'home' : 'homes');
+        moreBtn.hidden = !res.hasMore;
+        skip = accumulated.length;
+      }).catch(function (err) {
+        grid.innerHTML = '<div class="empty-state"><p>The listing feed didn’t respond.</p>'
+                       + '<p style="font-family:var(--font-sans);font-size:1rem;">Please try again in a moment, or reach out and Marie will search it for you.</p>'
+                       + '<a class="btn" href="contact.html">Get in Touch</a></div>';
+        countEl.textContent = '';
+        moreBtn.hidden = true;
+        console.warn('[MB.idx] query failed:', err && err.message);
+      });
+    }
+
+    form.addEventListener('submit', function (e) { e.preventDefault(); run(false); });
+    if (sortSel)  sortSel.addEventListener('change', function () { run(false); });
+    if (moreBtn)  moreBtn.addEventListener('click', function () { run(true); });
+    if (resetBtn) resetBtn.addEventListener('click', function () {
+      form.reset();
+      if (sortSel) sortSel.value = 'newest';
+      run(false);
+    });
+
+    run(false);
+  })();
+</script>
+
+<script src="assets/js/accessibility.js"></script>
+</body>
+</html>
