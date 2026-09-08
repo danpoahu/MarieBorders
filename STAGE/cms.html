@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/site.css?v=2.9">
+<link rel="stylesheet" href="assets/css/site.css?v=3.0">
 <!-- Trix rich-text editor (listing Description field) -->
 <link rel="stylesheet" href="https://unpkg.com/trix@2.1.15/dist/trix.css">
 <script defer src="https://unpkg.com/trix@2.1.15/dist/trix.umd.min.js"></script>
@@ -129,6 +129,81 @@
     flex-wrap: wrap;
     margin-bottom: var(--s5);
   }
+
+  /* ---- Reviews panel ---- */
+  .rv-row-3 { display: grid; grid-template-columns: 1fr; gap: var(--s5); }
+  @media (min-width: 760px) { .rv-row-3 { grid-template-columns: 1fr 1.2fr 0.7fr; } }
+
+  .rv-checks { display: flex; flex-wrap: wrap; gap: var(--s5); padding-top: var(--s1); }
+  .rv-checks label {
+    display: flex;
+    align-items: center;
+    gap: var(--s2);
+    font-size: 0.9rem;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  .rv-checks input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+
+  .rv-actions { display: flex; flex-wrap: wrap; gap: var(--s4); justify-content: space-between; align-items: center; }
+  .rv-actions__left, .rv-actions__right { display: flex; gap: var(--s3); flex-wrap: wrap; }
+
+  /* Preview uses the real .reviews__* classes from site.css so what Marie
+     sees here is the same type, colour and spacing the visitor gets. */
+  .rv-preview {
+    background: var(--paper);
+    border: 1px solid var(--hush);
+    border-radius: var(--radius);
+    padding: var(--s7) var(--s5);
+    margin-top: var(--s5);
+    text-align: center;
+  }
+  .rv-preview__label {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin-bottom: var(--s5);
+  }
+
+  .rv-list { border-top: 1px solid var(--hush); margin-top: var(--s6); padding-top: var(--s3); }
+  .rv-item {
+    display: flex;
+    gap: var(--s4);
+    align-items: flex-start;
+    padding: var(--s4) var(--s2);
+    border-bottom: 1px solid var(--hush);
+    background: #fff;
+  }
+  .rv-item.is-dragging { opacity: 0.45; }
+  .rv-item.is-editing { background: var(--paper); }
+  .rv-grip {
+    color: var(--ink-muted);
+    cursor: grab;
+    font-size: 1.1rem;
+    line-height: 1.4;
+    letter-spacing: -2px;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .rv-body { flex: 1; min-width: 0; }
+  .rv-name { font-weight: 600; font-size: 0.95rem; color: var(--ink); }
+  .rv-stars { color: var(--accent); letter-spacing: 1px; font-size: 0.85rem; margin-left: var(--s2); }
+  .rv-meta { font-size: 0.78rem; color: var(--ink-muted); margin-top: 2px; }
+  .rv-text {
+    font-size: 0.88rem;
+    color: var(--ink-soft);
+    margin-top: var(--s2);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .rv-acts { display: flex; gap: var(--s2); align-items: center; flex-shrink: 0; }
+  .row-pill--showing { background: #2d6a4f; }
+  .row-pill--hidden  { background: var(--ink-muted); }
 
   /* ---- Login card ---- */
   .login-wrap {
@@ -1066,7 +1141,7 @@
 <!-- ============ CMS SHELL ============ -->
 <div id="cms-shell" class="cms-shell">
   <div class="cms-bar">
-    <div class="cms-bar__brand">Marie Borders CMS<span class="cms-bar__ver">v2.3</span></div>
+    <div class="cms-bar__brand">Marie Borders CMS<span class="cms-bar__ver">v2.4</span></div>
     <div class="cms-bar__user">
       <span>Signed in as <strong id="cms-user-email">—</strong></span>
       <button id="cms-signout-btn" type="button">Sign Out</button>
@@ -1077,6 +1152,7 @@
     <button class="cms-tab is-active" type="button" data-tab="listings">Listings</button>
     <button class="cms-tab" type="button" data-tab="about">About Page</button>
     <button class="cms-tab" type="button" data-tab="home">Home Page</button>
+    <button class="cms-tab" type="button" data-tab="reviews">Reviews</button>
     <button class="cms-tab" type="button" data-tab="contact">Contact Info</button>
     <button class="cms-tab" type="button" data-tab="emails">Email Templates</button>
     <button class="cms-tab" type="button" data-tab="guides">Guides</button>
@@ -1179,6 +1255,95 @@
           <button type="submit" class="btn">Save Changes</button>
         </div>
       </form>
+    </div>
+  </section>
+
+  <!-- ============ REVIEWS PANEL ============ -->
+  <section class="cms-panel" data-panel="reviews">
+    <div class="cms-section">
+      <h2>Reviews</h2>
+      <p class="helper-text" style="margin-top:0;margin-bottom:var(--s5);">
+        Client reviews you type in yourself. Each one can appear on the Home, About, For Sale and Contact pages &mdash; tick the pages you want it on. Drag the handles in the list below to set the order they rotate in.
+      </p>
+
+      <form id="rv-form" class="form" novalidate>
+        <div class="rv-row-3">
+          <div class="field">
+            <label for="rv-name">Client name</label>
+            <input type="text" id="rv-name" maxlength="120" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="rv-where">Where / what</label>
+            <input type="text" id="rv-where" maxlength="160" autocomplete="off" placeholder="Bought in Novato, 2026">
+            <p class="helper-text">Shows under the name. Leave empty to show nothing.</p>
+          </div>
+          <div class="field">
+            <label for="rv-rating">Rating</label>
+            <select id="rv-rating">
+              <option value="5">5 stars</option>
+              <option value="4">4 stars</option>
+              <option value="">No rating</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="rv-text">What they said</label>
+          <textarea id="rv-text" rows="4" maxlength="2000"></textarea>
+          <p class="helper-text">Around 200 characters reads best in the carousel. Longer is fine &mdash; it will still fit, just smaller.</p>
+        </div>
+
+        <div class="field--row">
+          <div class="field">
+            <label for="rv-date">Date</label>
+            <input type="date" id="rv-date">
+          </div>
+          <div class="field">
+            <label for="rv-source">Originally from</label>
+            <select id="rv-source">
+              <option value="direct">Given directly</option>
+              <option value="zillow">Zillow</option>
+              <option value="google">Google</option>
+              <option value="realtor">Realtor.com</option>
+            </select>
+            <p class="helper-text">For your own records. Not shown on the site.</p>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Published</label>
+          <div class="rv-checks">
+            <label><input type="checkbox" id="rv-published" checked> Show this review on the website</label>
+          </div>
+          <p class="helper-text">Untick to keep the review here in the CMS without showing it anywhere.</p>
+        </div>
+
+        <div class="field">
+          <label>Show this review on</label>
+          <div class="rv-checks">
+            <label><input type="checkbox" data-rv-page="home" checked> Home</label>
+            <label><input type="checkbox" data-rv-page="about" checked> About</label>
+            <label><input type="checkbox" data-rv-page="forSale" checked> For Sale</label>
+            <label><input type="checkbox" data-rv-page="contact" checked> Contact</label>
+          </div>
+          <p class="helper-text">Untick a page to keep a review off it. A review with nothing ticked is saved but never shown.</p>
+        </div>
+
+        <div class="rv-actions">
+          <div class="rv-actions__left">
+            <button type="button" class="btn" id="rv-save-btn">Save review</button>
+            <button type="button" class="btn btn--secondary" id="rv-preview-btn">Preview</button>
+          </div>
+          <div class="rv-actions__right" id="rv-editing-actions" style="display:none;">
+            <button type="button" class="btn btn--secondary" id="rv-new-btn">Start a new review</button>
+            <button type="button" class="btn btn--danger" id="rv-delete-btn">Delete review</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="rv-preview" id="rv-preview" style="display:none;" aria-live="polite"></div>
+
+      <div class="rv-list" id="rv-list" aria-live="polite"></div>
     </div>
   </section>
 
@@ -3616,6 +3781,325 @@ gcResetBtnEl.addEventListener('click', async () => {
 document.querySelectorAll('.cms-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     if (tab.getAttribute('data-tab') === 'guides' && !gcInitialized) initGuides();
+  });
+});
+
+/* ===========================================================
+   REVIEWS
+   Firestore `reviews` — ONE DOCUMENT PER REVIEW, mirroring the
+   `listings` collection rather than the single-document shape
+   used by siteContent/guides. Reviews are added, reordered and
+   deleted individually, so per-document is the right grain.
+
+   {
+     clientName : string   "The Sample Family"  (invented)
+     where      : string   "Bought in Novato, 2026"  (may be '')
+     rating     : number   5 | 4 | null              (null = no stars)
+     text       : string   the review itself
+     date       : string   "YYYY-MM-DD"              (CMS list only)
+     source     : string   direct|zillow|google|realtor
+                           — records only, never rendered on the site
+     published  : bool
+     pages      : map      { home, about, forSale, contact } of bool
+     order      : number   rotation order, ascending, 0-based
+     createdAt / updatedAt / updatedBy
+   }
+
+   The public site reads this with where('published','==',true)
+   and sorts on `order` client-side (see assets/js/reviews.js).
+   =========================================================== */
+
+const RV_PAGE_KEYS   = ['home', 'about', 'forSale', 'contact'];
+const RV_PAGE_LABELS = { home: 'Home', about: 'About', forSale: 'For Sale', contact: 'Contact' };
+const RV_SOURCES     = { direct: 1, zillow: 1, google: 1, realtor: 1 };
+const RV_MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+let rvCache = [];
+let rvEditingId = null;
+let rvInitialized = false;
+let rvLoadInFlight = false;
+
+const rvFormEl        = document.getElementById('rv-form');
+const rvNameEl        = document.getElementById('rv-name');
+const rvWhereEl       = document.getElementById('rv-where');
+const rvRatingEl      = document.getElementById('rv-rating');
+const rvTextEl        = document.getElementById('rv-text');
+const rvDateEl        = document.getElementById('rv-date');
+const rvSourceEl      = document.getElementById('rv-source');
+const rvPublishedEl   = document.getElementById('rv-published');
+const rvSaveBtnEl     = document.getElementById('rv-save-btn');
+const rvPreviewBtnEl  = document.getElementById('rv-preview-btn');
+const rvNewBtnEl      = document.getElementById('rv-new-btn');
+const rvDeleteBtnEl   = document.getElementById('rv-delete-btn');
+const rvEditActionsEl = document.getElementById('rv-editing-actions');
+const rvPreviewEl     = document.getElementById('rv-preview');
+const rvListEl        = document.getElementById('rv-list');
+
+function rvPageBox(key) { return document.querySelector('[data-rv-page="' + key + '"]'); }
+
+function rvStarsGlyphs(rating) {
+  const n = Number(rating);
+  if (!n || !isFinite(n) || n < 1) return '';
+  return '★'.repeat(Math.max(1, Math.min(5, Math.round(n))));
+}
+
+function rvFmtDate(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  if (!m) return '';
+  const mon = RV_MONTHS[Number(m[2]) - 1];
+  if (!mon) return '';
+  return String(Number(m[3])) + ' ' + mon;
+}
+
+function rvIsShowing(r) {
+  const pages = r.pages || {};
+  return !!r.published && RV_PAGE_KEYS.some(k => pages[k] === true);
+}
+
+function rvPagesLabel(r) {
+  const pages = r.pages || {};
+  const on = RV_PAGE_KEYS.filter(k => pages[k] === true).map(k => RV_PAGE_LABELS[k]);
+  if (!r.published || !on.length) return 'not shown anywhere';
+  return on.join(', ');
+}
+
+function rvSortCache() {
+  rvCache.sort((a, b) => {
+    const ao = typeof a.order === 'number' ? a.order : 9999;
+    const bo = typeof b.order === 'number' ? b.order : 9999;
+    return ao - bo;
+  });
+}
+
+async function rvLoad() {
+  try {
+    const snap = await getDocs(collection(db, 'reviews'));
+    rvCache = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+    rvSortCache();
+    return true;
+  } catch (err) {
+    console.warn('[reviews] load failed:', err && err.message);
+    rvCache = [];
+    rvListEl.innerHTML = '<div class="empty-list">Could not load reviews. ' + escapeHtml(err.message || '') + '</div>';
+    return false;
+  }
+}
+
+async function initReviews() {
+  if (rvInitialized || rvLoadInFlight) return;
+  rvLoadInFlight = true;
+  try {
+    const ok = await rvLoad();
+    rvInitialized = ok;
+    if (ok) rvRenderList();
+  } finally {
+    rvLoadInFlight = false;
+  }
+}
+
+function rvRenderList() {
+  if (!rvCache.length) {
+    rvListEl.innerHTML = '<div class="empty-list">No reviews yet. Fill in the form above and click "Save review".</div>';
+    return;
+  }
+
+  rvListEl.innerHTML = rvCache.map((r, i) => {
+    const showing = rvIsShowing(r);
+    const stars = rvStarsGlyphs(r.rating);
+    const meta = [(r.where || '').trim(), rvFmtDate(r.date), rvPagesLabel(r)].filter(Boolean).join(' · ');
+    return ''
+      + '<div class="rv-item' + (r.id === rvEditingId ? ' is-editing' : '') + '" draggable="true" data-idx="' + i + '">'
+      +   '<span class="rv-grip" title="Drag to reorder" aria-hidden="true">⋮⋮</span>'
+      +   '<div class="rv-body">'
+      +     '<div class="rv-name">' + escapeHtml(r.clientName || '(no name)')
+      +       (stars ? '<span class="rv-stars">' + stars + '</span>' : '')
+      +     '</div>'
+      +     '<div class="rv-meta">' + escapeHtml(meta) + '</div>'
+      +     '<div class="rv-text">' + escapeHtml(r.text || '') + '</div>'
+      +   '</div>'
+      +   '<div class="rv-acts">'
+      +     '<span class="row-pill row-pill--' + (showing ? 'showing' : 'hidden') + '">'
+      +       (showing ? 'Showing' : 'Hidden')
+      +     '</span>'
+      +     '<button type="button" class="btn btn--secondary btn--sm" data-rv-edit="' + escapeHtml(r.id) + '">Edit</button>'
+      +   '</div>'
+      + '</div>';
+  }).join('');
+
+  rvListEl.querySelectorAll('[data-rv-edit]').forEach(btn => {
+    btn.addEventListener('click', () => rvEdit(btn.getAttribute('data-rv-edit')));
+  });
+
+  // Drag-to-reorder — same native HTML5 pattern as the listing photo strip,
+  // no library. Dropping persists the new `order` straight away.
+  let rvDragSrc = null;
+  rvListEl.querySelectorAll('.rv-item').forEach(item => {
+    item.addEventListener('dragstart', () => { rvDragSrc = item; item.classList.add('is-dragging'); });
+    item.addEventListener('dragend',   () => { item.classList.remove('is-dragging'); rvDragSrc = null; });
+    item.addEventListener('dragover',  (e) => { e.preventDefault(); });
+    item.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!rvDragSrc || rvDragSrc === item) return;
+      const from = parseInt(rvDragSrc.getAttribute('data-idx'), 10);
+      const to   = parseInt(item.getAttribute('data-idx'), 10);
+      if (isNaN(from) || isNaN(to)) return;
+      const moved = rvCache.splice(from, 1)[0];
+      rvCache.splice(to, 0, moved);
+      rvRenderList();
+      rvPersistOrder();
+    });
+  });
+}
+
+async function rvPersistOrder() {
+  const writes = [];
+  rvCache.forEach((r, i) => {
+    if (r.order === i) return;
+    r.order = i;
+    writes.push(updateDoc(doc(db, 'reviews', r.id), { order: i, updatedAt: serverTimestamp() }));
+  });
+  if (!writes.length) return;
+  try {
+    await Promise.all(writes);
+    toast('Order saved');
+  } catch (err) {
+    toast('Could not save the order: ' + (err.message || err), { error: true });
+    await rvLoad();
+    rvRenderList();
+  }
+}
+
+function rvFormValues() {
+  const pages = {};
+  RV_PAGE_KEYS.forEach(k => {
+    const box = rvPageBox(k);
+    pages[k] = !!(box && box.checked);
+  });
+  return {
+    clientName: rvNameEl.value.trim(),
+    where: rvWhereEl.value.trim(),
+    rating: rvRatingEl.value === '' ? null : Number(rvRatingEl.value),
+    text: rvTextEl.value.trim(),
+    date: rvDateEl.value || '',
+    source: RV_SOURCES[rvSourceEl.value] ? rvSourceEl.value : 'direct',
+    published: !!rvPublishedEl.checked,
+    pages: pages
+  };
+}
+
+function rvResetForm() {
+  rvEditingId = null;
+  rvNameEl.value = '';
+  rvWhereEl.value = '';
+  rvRatingEl.value = '5';
+  rvTextEl.value = '';
+  rvDateEl.value = '';
+  rvSourceEl.value = 'direct';
+  rvPublishedEl.checked = true;
+  RV_PAGE_KEYS.forEach(k => { const b = rvPageBox(k); if (b) b.checked = true; });
+  rvEditActionsEl.style.display = 'none';
+  rvSaveBtnEl.textContent = 'Save review';
+  rvPreviewEl.style.display = 'none';
+  rvPreviewEl.innerHTML = '';
+  rvRenderList();
+}
+
+function rvEdit(id) {
+  const r = rvCache.find(x => x.id === id);
+  if (!r) return;
+  rvEditingId = id;
+  rvNameEl.value = r.clientName || '';
+  rvWhereEl.value = r.where || '';
+  rvRatingEl.value = (r.rating === 5 || r.rating === 4) ? String(r.rating) : '';
+  rvTextEl.value = r.text || '';
+  rvDateEl.value = typeof r.date === 'string' ? r.date : '';
+  rvSourceEl.value = RV_SOURCES[r.source] ? r.source : 'direct';
+  rvPublishedEl.checked = r.published !== false;
+  const pages = r.pages || {};
+  RV_PAGE_KEYS.forEach(k => { const b = rvPageBox(k); if (b) b.checked = pages[k] === true; });
+  rvEditActionsEl.style.display = '';
+  rvSaveBtnEl.textContent = 'Save changes';
+  rvPreviewEl.style.display = 'none';
+  rvRenderList();
+  rvFormEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  rvNameEl.focus();
+}
+
+rvFormEl.addEventListener('submit', (e) => { e.preventDefault(); });
+
+rvSaveBtnEl.addEventListener('click', async () => {
+  const v = rvFormValues();
+  if (!v.clientName) { toast('Add a client name before saving', { error: true }); rvNameEl.focus(); return; }
+  if (!v.text) { toast('Add the review text before saving', { error: true }); rvTextEl.focus(); return; }
+
+  const payload = Object.assign({}, v, {
+    updatedAt: serverTimestamp(),
+    updatedBy: (auth.currentUser && auth.currentUser.uid) || null
+  });
+
+  const restore = rvSaveBtnEl.textContent;
+  rvSaveBtnEl.disabled = true;
+  rvSaveBtnEl.textContent = 'Saving…';
+  try {
+    if (rvEditingId) {
+      await updateDoc(doc(db, 'reviews', rvEditingId), payload);
+      toast('Review saved');
+    } else {
+      const maxOrder = rvCache.reduce((m, r) => Math.max(m, typeof r.order === 'number' ? r.order : -1), -1);
+      payload.order = maxOrder + 1;
+      payload.createdAt = serverTimestamp();
+      await addDoc(collection(db, 'reviews'), payload);
+      toast('Review added');
+    }
+    await rvLoad();
+    rvResetForm();
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+    rvSaveBtnEl.textContent = restore;
+  } finally {
+    rvSaveBtnEl.disabled = false;
+  }
+});
+
+rvNewBtnEl.addEventListener('click', () => rvResetForm());
+
+rvDeleteBtnEl.addEventListener('click', async () => {
+  if (!rvEditingId) return;
+  const r = rvCache.find(x => x.id === rvEditingId);
+  const who = (r && r.clientName) ? r.clientName : 'this client';
+  if (!confirm('Delete the review from ' + who + '? This cannot be undone.')) return;
+  try {
+    await deleteDoc(doc(db, 'reviews', rvEditingId));
+    toast('Review deleted');
+    await rvLoad();
+    rvResetForm();
+  } catch (err) {
+    toast('Delete failed: ' + (err.message || err), { error: true });
+  }
+});
+
+/* Preview renders the form as it stands using the real .reviews__*
+   classes from site.css — same serif, same gold, same spacing as the
+   live carousel. */
+rvPreviewBtnEl.addEventListener('click', () => {
+  const v = rvFormValues();
+  if (!v.text) { toast('Add the review text to preview it', { error: true }); rvTextEl.focus(); return; }
+  const stars = rvStarsGlyphs(v.rating);
+  rvPreviewEl.innerHTML = ''
+    + '<p class="rv-preview__label">Preview — how this reads on the site</p>'
+    + '<span class="reviews__mark" aria-hidden="true">“</span>'
+    + (stars ? '<p class="reviews__stars">' + stars + '</p>' : '')
+    + '<blockquote class="reviews__quote">' + escapeHtml(v.text) + '</blockquote>'
+    + '<p class="reviews__who">' + escapeHtml(v.clientName) + '</p>'
+    + (v.where ? '<p class="reviews__where">' + escapeHtml(v.where) + '</p>' : '');
+  rvPreviewEl.style.display = 'block';
+  rvPreviewEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+// Lazy-init when the Reviews tab is first opened, matching the Guides tab.
+document.querySelectorAll('.cms-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.getAttribute('data-tab') === 'reviews' && !rvInitialized) initReviews();
   });
 });
 

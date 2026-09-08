@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/site.css?v=2.9">
+<link rel="stylesheet" href="assets/css/site.css?v=3.0">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -63,6 +63,11 @@
 
     </div>
   </section>
+
+  <!-- Client reviews carousel — populated by assets/js/reviews.js.
+       Ships hidden and empty: with no published reviews for this page
+       nothing renders here at all. -->
+  <section class="reviews" data-reviews-page="forSale" aria-label="Client reviews" hidden></section>
 
   <section class="band-contact">
     <div class="wrap wrap--narrow">
@@ -194,6 +199,7 @@
   })();
 </script>
 
+<script src="assets/js/reviews.js?v=1"></script>
 <script src="assets/js/analytics.js?v=2"></script>
 <script src="assets/js/accessibility.js"></script>
 </body>

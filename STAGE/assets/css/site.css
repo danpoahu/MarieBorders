@@ -1548,6 +1548,118 @@ p { margin-bottom: var(--s4); }
   color: var(--ink-muted);
 }
 
+/* ---------- Client reviews carousel ---------- */
+/* Rendered by assets/js/reviews.js into
+   <section class="reviews" data-reviews-page="…" hidden>. The section is
+   shipped empty and hidden; the script only unhides it once it has at least
+   one published review for that page, so "no reviews" leaves no gap and no
+   heading behind. */
+.reviews {
+  background: var(--paper);
+  border-top: 1px solid var(--hush);
+  padding: var(--s8) 0;
+}
+.reviews[hidden] { display: none; }
+
+.reviews__car { position: relative; text-align: center; }
+
+.reviews__eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--accent-deep);
+  margin-bottom: var(--s6);
+}
+
+.reviews__slide { display: none; }
+.reviews__slide.is-on { display: block; animation: reviews-fade 0.5s ease; }
+@keyframes reviews-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.reviews__mark {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 4rem;
+  line-height: 0.6;
+  color: var(--hush);
+  margin-bottom: var(--s3);
+}
+
+.reviews__stars {
+  color: var(--accent);
+  letter-spacing: 0.2em;
+  font-size: 0.95rem;
+  margin-bottom: var(--s4);
+}
+
+.reviews__quote {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: clamp(1.2rem, 2.4vw, 1.55rem);
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 0 0 var(--s5);
+}
+
+.reviews__who {
+  font-family: var(--font-sans);
+  font-size: 0.83rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.reviews__where {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+  margin-top: var(--s1);
+}
+
+.reviews__dots {
+  display: flex;
+  gap: 9px;
+  justify-content: center;
+  margin-top: var(--s6);
+}
+.reviews__dot {
+  width: 7px;
+  height: 7px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--hush);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.reviews__dot.is-on { background: var(--accent); }
+.reviews__dot:hover { background: var(--accent-deep); }
+.reviews__dot:focus-visible { outline: 2px solid var(--accent-deep); outline-offset: 3px; }
+
+.reviews__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: 0;
+  padding: var(--s2) var(--s3);
+  line-height: 1;
+  font-size: 1.6rem;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.reviews__arrow:hover, .reviews__arrow:focus { color: var(--accent-deep); }
+.reviews__arrow--prev { left: -6px; }
+.reviews__arrow--next { right: -6px; }
+@media (max-width: 720px) {
+  .reviews__arrow { display: none; }
+}
+
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
