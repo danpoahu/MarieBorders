@@ -34,7 +34,7 @@
  *   rating      number   5 | 4 | null                 (null = no stars)
  *   text        string   the review itself
  *   date        string   "YYYY-MM-DD"                 (CMS list only)
- *   source      string   direct|zillow|google|realtor (CMS records only —
+ *   source      string   direct|zillow|yelp|google|realtor (CMS records
  *                        deliberately never rendered on the public site)
  *   published   bool
  *   pages       map      { home, about, forSale, contact } of bool

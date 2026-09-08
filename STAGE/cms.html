@@ -1141,7 +1141,7 @@
 <!-- ============ CMS SHELL ============ -->
 <div id="cms-shell" class="cms-shell">
   <div class="cms-bar">
-    <div class="cms-bar__brand">Marie Borders CMS<span class="cms-bar__ver">v2.4</span></div>
+    <div class="cms-bar__brand">Marie Borders CMS<span class="cms-bar__ver">v2.5</span></div>
     <div class="cms-bar__user">
       <span>Signed in as <strong id="cms-user-email">—</strong></span>
       <button id="cms-signout-btn" type="button">Sign Out</button>
@@ -1303,6 +1303,7 @@
             <select id="rv-source">
               <option value="direct">Given directly</option>
               <option value="zillow">Zillow</option>
+              <option value="yelp">Yelp</option>
               <option value="google">Google</option>
               <option value="realtor">Realtor.com</option>
             </select>
@@ -3797,7 +3798,7 @@ document.querySelectorAll('.cms-tab').forEach(tab => {
      rating     : number   5 | 4 | null              (null = no stars)
      text       : string   the review itself
      date       : string   "YYYY-MM-DD"              (CMS list only)
-     source     : string   direct|zillow|google|realtor
+     source     : string   direct|zillow|yelp|google|realtor
                            — records only, never rendered on the site
      published  : bool
      pages      : map      { home, about, forSale, contact } of bool
@@ -3811,7 +3812,7 @@ document.querySelectorAll('.cms-tab').forEach(tab => {
 
 const RV_PAGE_KEYS   = ['home', 'about', 'forSale', 'contact'];
 const RV_PAGE_LABELS = { home: 'Home', about: 'About', forSale: 'For Sale', contact: 'Contact' };
-const RV_SOURCES     = { direct: 1, zillow: 1, google: 1, realtor: 1 };
+const RV_SOURCES     = { direct: 1, zillow: 1, yelp: 1, google: 1, realtor: 1 };
 const RV_MONTHS      = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 let rvCache = [];
