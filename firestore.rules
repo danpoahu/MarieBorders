@@ -142,6 +142,15 @@ service cloud.firestore {
       allow write: if isAuthed();
     }
 
+    // ---- REVIEWS (client testimonials; CMS-managed) ----
+    // Public visitors read only what Marie has published; unpublished drafts
+    // stay private. Write is any authed user, matching listings/guides.
+
+    match /reviews/{reviewId} {
+      allow read, list: if isAuthed() || resource.data.published == true;
+      allow write: if isAuthed();
+    }
+
     // ---- STAGE VISITS (STAGE preview traffic log) ----
     // Anyone visiting STAGE can log a visit; only an authed user (Daniel,
     // signed in) can read or clear them. Internal review tool only.
