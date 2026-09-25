@@ -60,7 +60,9 @@
   <section class="section">
     <div class="wrap wrap--narrow policy">
 
-      <p class="policy__meta">Effective April 25, 2026 &middot; Last updated September 25, 2026</p>
+      <p class="policy__meta">Effective <span data-content="policyEffective">April 25, 2026</span> &middot; Last updated <span data-content="policyUpdated">September 25, 2026</span></p>
+
+      <div data-content="policyBody">
 
       <p>This policy explains how Marie Borders, Real Estate Associate (DRE #01256719) with Marin&rsquo;s Finest (&ldquo;we&rdquo;, &ldquo;us&rdquo;), collects, uses, shares and protects information through <strong>marieborders.com</strong> (the &ldquo;Site&rdquo;). It also describes how we handle multiple listing service (MLS) data displayed on the Site. By using the Site you agree to this policy.</p>
 
@@ -154,6 +156,7 @@
         Email: <a href="mailto:marie@marinsfinest.com">marie@marinsfinest.com</a><br>
         Phone: <a href="tel:+14156011715">(415) 601-1715</a>
       </p>
+      </div>
 
     </div>
   </section>
@@ -194,6 +197,13 @@
 
 <script type="module" src="assets/js/firebase-init.js"></script>
 <script src="assets/js/site.js?v=2.4"></script>
+
+<script src="assets/js/site-content.js?v=2"></script>
+<script>
+  (function () {
+    MB.content && MB.content.applyPrivacy && MB.content.applyPrivacy();
+  })();
+</script>
 
 <script src="assets/js/analytics.js?v=2"></script>
 <script src="assets/js/accessibility.js"></script>
