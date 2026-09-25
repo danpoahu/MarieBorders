@@ -49,6 +49,18 @@
   .field trix-editor h1 { font-size: 1.3rem; }
   .field trix-editor p { margin: 0 0 0.6em; }
 
+  /* ---- Privacy policy editor (contenteditable; keeps h2/h3 that Trix would flatten) ---- */
+  .pp-toolbar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--s2); }
+  .pp-toolbar button { font: 500 .85rem var(--font-sans); padding: 6px 12px; border: 1px solid var(--hush); background: #fff; color: var(--ink); border-radius: var(--radius); cursor: pointer; }
+  .pp-toolbar button:hover { border-color: var(--accent); }
+  .pp-editor { font-family: var(--font-sans); font-size: 1rem; line-height: 1.6; padding: var(--s4) var(--s5); background: #fff; border: 1px solid var(--hush); border-radius: var(--radius); color: var(--ink); min-height: 420px; max-height: 70vh; overflow-y: auto; }
+  .pp-editor:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(168, 133, 76, 0.15); }
+  .pp-editor h2 { font-family: var(--font-serif); font-size: 1.45rem; margin: 1.2em 0 .4em; }
+  .pp-editor h3 { font-family: var(--font-serif); font-size: 1.15rem; margin: 1em 0 .3em; }
+  .pp-editor p { margin: 0 0 .7em; }
+  .pp-editor ul, .pp-editor ol { margin: 0 0 .7em; padding-left: 1.4em; }
+  .pp-editor a { color: var(--accent-deep); }
+
   .cms-shell { display: none; }
   .cms-shell.is-ready { display: block; }
 
@@ -1141,7 +1153,7 @@
 <!-- ============ CMS SHELL ============ -->
 <div id="cms-shell" class="cms-shell">
   <div class="cms-bar">
-    <div class="cms-bar__brand">Marie Borders CMS<span class="cms-bar__ver">v2.5</span></div>
+    <div class="cms-bar__brand">Marie Borders CMS<span class="cms-bar__ver">v2.6</span></div>
     <div class="cms-bar__user">
       <span>Signed in as <strong id="cms-user-email">—</strong></span>
       <button id="cms-signout-btn" type="button">Sign Out</button>
@@ -1154,6 +1166,7 @@
     <button class="cms-tab" type="button" data-tab="home">Home Page</button>
     <button class="cms-tab" type="button" data-tab="reviews">Reviews</button>
     <button class="cms-tab" type="button" data-tab="contact">Contact Info</button>
+    <button class="cms-tab" type="button" data-tab="privacy">Privacy Policy</button>
     <button class="cms-tab" type="button" data-tab="emails">Email Templates</button>
     <button class="cms-tab" type="button" data-tab="guides">Guides</button>
     <button class="cms-tab" type="button" data-tab="emaillog">Email Log</button>
@@ -1378,6 +1391,41 @@
         </div>
         <div class="cms-row" style="margin-top:var(--s5);">
           <button type="submit" class="btn">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ PRIVACY POLICY PANEL ============ -->
+  <section class="cms-panel" data-panel="privacy">
+    <div class="cms-section">
+      <h2>Privacy &amp; Security Policy</h2>
+      <p class="helper-text" style="margin-top:0;margin-bottom:var(--s5);">
+        Edits the policy at <a href="privacy.html" target="_blank" rel="noopener">privacy.html</a>, which is linked in every page footer and in the MLS data license application.
+        The &ldquo;Last updated&rdquo; date is set automatically when you save. Please check wording changes with Marie &mdash; this is a legal notice.
+      </p>
+      <form id="privacy-form" class="form" novalidate>
+        <div class="field">
+          <label for="privacy-effective">Effective date</label>
+          <input type="text" id="privacy-effective" placeholder="April 25, 2026">
+        </div>
+        <div class="field">
+          <label>Policy text</label>
+          <div class="pp-toolbar" role="toolbar" aria-label="Formatting">
+            <button type="button" data-pp="h2">Heading</button>
+            <button type="button" data-pp="h3">Subheading</button>
+            <button type="button" data-pp="p">Paragraph</button>
+            <button type="button" data-pp="bold"><strong>B</strong></button>
+            <button type="button" data-pp="ul">&bull; List</button>
+            <button type="button" data-pp="link">Link</button>
+            <button type="button" data-pp="undo">Undo</button>
+          </div>
+          <div id="privacy-editor" class="pp-editor" contenteditable="true" aria-label="Policy text"></div>
+        </div>
+        <p class="helper-text" id="privacy-status"></p>
+        <div class="cms-row" style="margin-top:var(--s5);">
+          <button type="submit" class="btn">Save Changes</button>
+          <a class="btn btn--secondary" href="privacy.html" target="_blank" rel="noopener">View page</a>
         </div>
       </form>
     </div>
@@ -2100,7 +2148,7 @@ function markDirty(formId) { dirtyForms.add(formId); }
 function clearUnsaved() { dirtyForms.clear(); etDirty = false; }
 function hasUnsavedChanges() { return dirtyForms.size > 0 || etDirty; }
 
-['about-form', 'home-form', 'contact-form-cms'].forEach(id => {
+['about-form', 'home-form', 'contact-form-cms', 'privacy-form'].forEach(id => {
   const f = document.getElementById(id);
   if (!f) return;
   f.addEventListener('input', () => markDirty(id));
@@ -2169,6 +2217,7 @@ function init() {
   loadHomeForm();
   loadAboutForm();
   loadContactForm();
+  loadPrivacyForm();
   initEmailTemplates();
 }
 
@@ -3074,6 +3123,103 @@ document.getElementById('contact-form-cms').addEventListener('submit', async (e)
   try {
     await setDoc(doc(db, 'siteContent', 'contact'), payload, { merge: true });
     dirtyForms.delete('contact-form-cms');
+    toast('Saved');
+  } catch (err) {
+    toast('Save failed: ' + (err.message || err), { error: true });
+  }
+});
+
+/* ===========================================================
+   PRIVACY POLICY  (siteContent/privacy)
+   =========================================================== */
+const PP_TAGS = { P:1, H2:1, H3:1, UL:1, OL:1, LI:1, STRONG:1, B:1, EM:1, I:1, A:1, BR:1 };
+function ppSanitize(html) {
+  const src = document.createElement('div');
+  src.innerHTML = html;
+  const out = document.createElement('div');
+  (function copy(from, to) {
+    from.childNodes.forEach(n => {
+      if (n.nodeType === 3) { to.appendChild(document.createTextNode(n.nodeValue)); return; }
+      if (n.nodeType !== 1) return;
+      let tag = n.tagName;
+      if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT'].includes(tag)) return;
+      if (tag === 'DIV') tag = 'P';
+      if (!PP_TAGS[tag]) { copy(n, to); return; }
+      const el = document.createElement(tag);
+      if (tag === 'A') {
+        const href = (n.getAttribute('href') || '').trim();
+        if (/^(https?:|mailto:|tel:|#)/i.test(href)) el.setAttribute('href', href);
+      }
+      if ((tag === 'H2' || tag === 'H3') && n.id && /^[a-z0-9-]+$/i.test(n.id)) el.id = n.id;
+      copy(n, el);
+      to.appendChild(el);
+    });
+  })(src, out);
+  return out.innerHTML;
+}
+
+async function ppDefaultsFromHtml() {
+  try {
+    const res = await fetch('privacy.html', { cache: 'no-cache' });
+    const d = new DOMParser().parseFromString(await res.text(), 'text/html');
+    const body = d.querySelector('[data-content="policyBody"]');
+    const eff  = d.querySelector('[data-content="policyEffective"]');
+    return { html: body ? body.innerHTML : '', effectiveDate: eff ? eff.textContent.trim() : '' };
+  } catch (e) {
+    return { html: '', effectiveDate: '' };
+  }
+}
+
+async function loadPrivacyForm() {
+  const status = document.getElementById('privacy-status');
+  try {
+    const [snap, fromHtml] = await Promise.all([
+      getDoc(doc(db, 'siteContent', 'privacy')),
+      ppDefaultsFromHtml()
+    ]);
+    const data = snap.exists() ? snap.data() : {};
+    document.getElementById('privacy-editor').innerHTML = ppSanitize(data.html || fromHtml.html || '');
+    document.getElementById('privacy-effective').value = data.effectiveDate || fromHtml.effectiveDate || 'April 25, 2026';
+    status.textContent = data.updatedLabel ? ('Last saved ' + data.updatedLabel + '.') : 'Showing the policy as published on the website.';
+    dirtyForms.delete('privacy-form');
+  } catch (e) {
+    console.warn('privacy load failed:', e.message);
+  }
+}
+
+document.querySelectorAll('.pp-toolbar [data-pp]').forEach(btn => {
+  btn.addEventListener('mousedown', e => e.preventDefault()); // keep the editor's selection
+  btn.addEventListener('click', () => {
+    const editor = document.getElementById('privacy-editor');
+    editor.focus();
+    const cmd = btn.getAttribute('data-pp');
+    if (cmd === 'h2' || cmd === 'h3' || cmd === 'p') document.execCommand('formatBlock', false, cmd.toUpperCase());
+    else if (cmd === 'bold') document.execCommand('bold');
+    else if (cmd === 'ul') document.execCommand('insertUnorderedList');
+    else if (cmd === 'undo') document.execCommand('undo');
+    else if (cmd === 'link') {
+      const url = prompt('Link address (https://…, mailto:… or tel:…)');
+      if (url) document.execCommand('createLink', false, url.trim());
+    }
+    markDirty('privacy-form');
+  });
+});
+
+document.getElementById('privacy-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const html = ppSanitize(document.getElementById('privacy-editor').innerHTML);
+  if (!html.replace(/<[^>]*>/g, '').trim()) { toast('The policy text is empty', { error: true }); return; }
+  const updatedLabel = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Los_Angeles' });
+  const payload = {
+    html,
+    effectiveDate: document.getElementById('privacy-effective').value.trim() || 'April 25, 2026',
+    updatedLabel,
+    updatedAt: new Date().toISOString()
+  };
+  try {
+    await setDoc(doc(db, 'siteContent', 'privacy'), payload);
+    dirtyForms.delete('privacy-form');
+    document.getElementById('privacy-status').textContent = 'Last saved ' + updatedLabel + '.';
     toast('Saved');
   } catch (err) {
     toast('Save failed: ' + (err.message || err), { error: true });

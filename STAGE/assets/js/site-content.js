@@ -1,6 +1,6 @@
 /* Marie Borders — site content overlay (Phase 3)
  *
- * Loads editable page copy from Firestore `siteContent/{home|about|contact}`
+ * Loads editable page copy from Firestore `siteContent/{home|about|contact|privacy}`
  * and overlays it onto pre-rendered HTML elements marked with
  * `data-content="<fieldName>"`.
  *
@@ -179,10 +179,57 @@
     });
   }
 
+
+  /* Privacy policy (siteContent/privacy { html, effectiveDate, updatedLabel }).
+     The body is edited as rich text in the CMS; only a small allow-list of tags
+     survives here, so nothing stored in that document can run script. */
+  var POLICY_TAGS = { P:1, H2:1, H3:1, UL:1, OL:1, LI:1, STRONG:1, B:1, EM:1, I:1, A:1, BR:1 };
+
+  function sanitizePolicy(html) {
+    var src = document.createElement('div');
+    src.innerHTML = html;
+    var out = document.createElement('div');
+    (function copy(from, to) {
+      Array.prototype.forEach.call(from.childNodes, function (n) {
+        if (n.nodeType === 3) { to.appendChild(document.createTextNode(n.nodeValue)); return; }
+        if (n.nodeType !== 1) return;
+        var tag = n.tagName;
+        if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'IFRAME' || tag === 'OBJECT') return;
+        if (tag === 'DIV') tag = 'P';                       // contenteditable line breaks
+        if (!POLICY_TAGS[tag]) { copy(n, to); return; }    // unwrap, keep the text
+        var el = document.createElement(tag);
+        if (tag === 'A') {
+          var href = (n.getAttribute('href') || '').trim();
+          if (/^(https?:|mailto:|tel:|#)/i.test(href)) el.setAttribute('href', href);
+          if (/^https?:/i.test(href)) { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener'); }
+        }
+        if ((tag === 'H2' || tag === 'H3') && n.id && /^[a-z0-9-]+$/i.test(n.id)) el.id = n.id;
+        copy(n, el);
+        to.appendChild(el);
+      });
+    })(src, out);
+    return out.innerHTML;
+  }
+
+  function applyPrivacy() {
+    loadDoc('privacy').then(function (data) {
+      if (!data || !data.html) return; // fallback HTML stays
+      var body = document.querySelector('[data-content="policyBody"]');
+      if (!body) return;
+      var clean = sanitizePolicy(data.html);
+      if (!clean.replace(/<[^>]*>/g, '').trim()) return;
+      body.innerHTML = clean;
+      setText('policyEffective', data.effectiveDate);
+      setText('policyUpdated', data.updatedLabel);
+    });
+  }
+
   MB.content = {
     applyHome: applyHome,
     applyAbout: applyAbout,
     applyContact: applyContact,
+    applyPrivacy: applyPrivacy,
+    sanitizePolicy: sanitizePolicy,
     // Exposed for the CMS to load defaults into form fields
     loadDoc: loadDoc
   };
